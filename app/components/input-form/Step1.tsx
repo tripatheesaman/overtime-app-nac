@@ -9,10 +9,10 @@ const schema = z.object({
     designation:z.string().min(6,"Designation should be atleast 6 characters long !")
 })
 export const Step1 = ()=>{
-const {formData,setFormData,setStep,step} = useFormContext()
+const {formData,setFormData,setStep} = useFormContext()
 const {
   register,
-  handleSubmit,
+  handleSubmit,  
   formState: { errors },
 } = useForm({
     defaultValues:formData,
@@ -24,9 +24,6 @@ const onSubmit = (data: Partial<FormData>) => {
   setStep(2);
 };
 
-const onPrevious = ()=>{
-    setStep(step-1)
-}
 
 return (
   <form onSubmit={handleSubmit(onSubmit)} className="p-4">
@@ -69,16 +66,6 @@ return (
       </p>
     )}
     <div className="flex justify-between">
-      {step > 1 && (
-        <button
-          type="button"
-          onClick={onPrevious}
-          className="bg-gray-500 text-white px-4 py-2 rounded-md"
-        >
-          Previous
-        </button>
-      )}
-
       <button
         type="submit"
         className="bg-blue-500 text-white px-4 py-2 rounded-md"
