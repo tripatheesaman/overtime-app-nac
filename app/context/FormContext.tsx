@@ -3,20 +3,25 @@ import { ReactNode } from "react";
 
 type dayOfWeek='Sunday'|'Monday'|'Tuesday'|'Wednesday'|'Thursday'|'Friday'|'Saturday'
 
-interface FormData{
+export interface FormData{
     name:string
     designation:string
     staffId:string
     regularOffDay:dayOfWeek
     dutyStartTime:string
     dutyEndTime:string
-    inOutTimes:{inTime:string, outTime:string}[]
+    inOutTimes: AttendanceRecord[]
 }
 interface ContextType{
     formData:FormData
     setFormData:(data:Partial<FormData>)=>void
     step:number
     setStep:(step:number)=>void
+}
+
+export interface AttendanceRecord{
+    inTime:string,
+    outTime:string
 }
 
 interface FormContextProviderProps{
