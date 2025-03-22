@@ -25,12 +25,12 @@ const Step3 = () => {
       );
 
       const jsonData: AttendanceRecord[] = rawData
-        .slice(1)
+        .slice(0)
         .map((row) => ({
           inTime: row[0] ? String(row[0]) : "",
           outTime: row[1] ? String(row[1]) : "",
         }))
-        .filter((entry) => entry.inTime && entry.outTime);
+        .filter((entry) => entry.inTime || entry.outTime);
 
       setExcelData(jsonData);
       setFormData({ inOutTimes: jsonData }); // ✅ Corrected here
@@ -81,7 +81,7 @@ const Step3 = () => {
 
       {excelData.length > 0 && (
         <div className="mt-4 p-2 border rounded">
-          <h3 className="font-medium">Preview Data:</h3>
+          <h3 className="font-medium">Upload Data:</h3>
           <pre className="text-xs">
             {JSON.stringify(excelData.slice(0, 5), null, 2)}...
           </pre>
