@@ -1,6 +1,7 @@
 import { Step1 } from "./Step1";
 import { useFormContext } from "@/app/context/FormContext";
 import Step2 from "./Step2";
+import Step3 from "./Step3";
 
 const FullStepForm = ()=>{
 const { step } = useFormContext()
@@ -13,6 +14,7 @@ const { step } = useFormContext()
       <div className="flex justify-center items-center border rounded-md w-full max-w-lg p-6">
         {step === 1 && <Step1 />}
         {step === 2 && <Step2 />}
+        {step === 3 && <Step3 />}
       </div>
     </div>
   );
