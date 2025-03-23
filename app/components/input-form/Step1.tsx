@@ -1,7 +1,8 @@
 import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useFormContext, FormData } from "@/app/context/FormContext"
+import { useFormContext } from "@/app/context/FormContext"
+import { FormData } from "@/app/types/InputFormType"
 
 const schema = z.object({
     name:z.string().min(2,"Name should be atleast 3 characters long !"),
