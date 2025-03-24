@@ -1,27 +1,11 @@
 import { createContext, useContext, useState } from "react";
 import { ReactNode } from "react";
-
-type dayOfWeek='Sunday'|'Monday'|'Tuesday'|'Wednesday'|'Thursday'|'Friday'|'Saturday'
-
-export interface FormData{
-    name:string
-    designation:string
-    staffId:string
-    regularOffDay:dayOfWeek
-    dutyStartTime:string
-    dutyEndTime:string
-    inOutTimes: AttendanceRecord[]
-}
+import { FormData } from "@/app/types/InputFormType";
 interface ContextType{
     formData:FormData
     setFormData:(data:Partial<FormData>)=>void
     step:number
     setStep:(step:number)=>void
-}
-
-export interface AttendanceRecord{
-    inTime:string,
-    outTime:string
 }
 
 interface FormContextProviderProps{
@@ -30,7 +14,7 @@ interface FormContextProviderProps{
 const FormContext = createContext<ContextType | undefined>(undefined)
 
 export const FormContextProvider:React.FC<FormContextProviderProps> = ({children})=>{
-    const [formData, setFormData] = useState<FormData>({name:"",staffId:"",regularOffDay:"Saturday",designation:"",dutyStartTime:"",dutyEndTime:"",inOutTimes:[]})
+    const [formData, setFormData] = useState<FormData>({name:"",staffId:"",regularOffDay:"Saturday",designation:"",dutyStartTime:"",dutyEndTime:"",inOutTimes:[], nightDutyDays:[]})
     const [step, setStep] = useState(1)
 
     const updateFormData = (data:Partial<FormData>)=>{
