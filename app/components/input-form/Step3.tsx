@@ -1,4 +1,5 @@
-import { useFormContext, AttendanceRecord } from "@/app/context/FormContext";
+import { useFormContext } from "@/app/context/FormContext";
+import { AttendanceRecord } from "@/app/types/InputFormType";
 import { useState } from "react";
 import * as XLSX from "xlsx";
 
@@ -33,7 +34,7 @@ const Step3 = () => {
         .filter((entry) => entry.inTime || entry.outTime);
 
       setExcelData(jsonData);
-      setFormData({ inOutTimes: jsonData }); // ✅ Corrected here
+      setFormData({ inOutTimes: jsonData });
     };
 
     reader.readAsArrayBuffer(file);
@@ -41,25 +42,8 @@ const Step3 = () => {
 
 
   const handleSubmit = async () => {
-    setIsLoading(true); // Start loading
-    try {
-      const response = await fetch("/api/upload-attendance", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ attendanceData: excelData }),
-      });
-
-      if (response.ok) {
-        alert("Data successfully uploaded!");
-        setStep(4);
-      } else {
-        alert("Upload failed!");
-      }
-    } catch (error) {
-      console.error("Error uploading data:", error);
-    } finally {
-      setIsLoading(false); // Stop loading after request
-    }
+    setIsLoading(true);
+    setStep(4)
   };
 
   const onPrevious = () => {
@@ -81,10 +65,7 @@ const Step3 = () => {
 
       {excelData.length > 0 && (
         <div className="mt-4 p-2 border rounded">
-          <h3 className="font-medium">Upload Data:</h3>
-          <pre className="text-xs">
-            {JSON.stringify(excelData.slice(0, 5), null, 2)}...
-          </pre>
+          <h3 className="font-medium">Upload Times:</h3>
         </div>
       )}
 
@@ -113,7 +94,7 @@ const Step3 = () => {
               : "bg-gray-300 text-gray-500"
           }`}
         >
-          {isLoading ? "Uploading..." : "Submit"}
+          {isLoading ? "Uploading..." : "Next"}
         </button>
       </div>
     </div>

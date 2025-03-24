@@ -1,7 +1,8 @@
-import { useFormContext, FormData } from "@/app/context/FormContext";
+import { useFormContext } from "@/app/context/FormContext";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import {z} from "zod"
+import { FormData } from "@/app/types/InputFormType";
 
 const schema = z.object({
   dutyStartTime: z
