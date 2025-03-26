@@ -18,10 +18,8 @@ export const POST = async (req: NextRequest) => {
       { error: "invalid data received !" },
       { status: 400 }
     );
-  console.log(data.inOutTimes);
   const processedAttendanceData = processRawTime(data.inOutTimes);
   if (processedAttendanceData.length < 1)
     return NextResponse
       .json({ error: "Invalid data found after processing !" }, {status:400});
-  console.log(processedAttendanceData);
 };
