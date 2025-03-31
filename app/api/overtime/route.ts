@@ -35,8 +35,13 @@ export const POST = async (req: NextRequest) => {
   if (data.nightDutyDays.length>0 && data.nightDutyDays){
     hasNightDays = true
     const attendanceDataAfterNightDuty = FormatNightTime(processedAttendanceData, data.nightDutyDays)
+    console.log(attendanceDataAfterNightDuty)
   }
-  // const nightTimeFormattedAttendanceData = FormatNightTime(processedAttendanceData, )
+
+  console.log(hasNightDays)
+
+
+  // const nightTimeFormattedAttendanceData = FormatNightTime(processedAttendanceData,data.night)
     
   if (processedAttendanceData.length < 1)
     return NextResponse
