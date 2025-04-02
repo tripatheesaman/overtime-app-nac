@@ -31,7 +31,6 @@ const Step3 = () => {
           inTime: row[0] ? String(row[0]) : "",
           outTime: row[1] ? String(row[1]) : "",
         }))
-        .filter((entry) => entry.inTime || entry.outTime);
 
       setExcelData(jsonData);
       setFormData({ inOutTimes: jsonData });
