@@ -1,37 +1,42 @@
 import { AttendanceRecord } from "@/app/types/InputFormType";
 
-const convertTo24HourFormat = (time: string): string => {
-  const [hours, minutes] = time.split(":").map(Number);
-  if (hours === 0 && minutes === 0) return "24:00"; 
-  if (hours < 12) return `${24 + hours}:${minutes.toString().padStart(2, "0")}`; 
-  return time; 
-};
-
 const FormatNightTime = (
   attendanceData: AttendanceRecord[],
   nightDutyDays: number[]
 ) => {
-  for (let i = 0; i < nightDutyDays.length; i++) {
-    const index = nightDutyDays[i];
+  const sortedNightDays = [...nightDutyDays].sort((a, b) => a - b);
+  if (JSON.stringify(sortedNightDays) !== JSON.stringify(nightDutyDays)) {
+    console.log("Night days are not in order. Skipping processing.");
+    return attendanceData;
+  }
+  console.log(nightDutyDays);
+  for (let i = 0; i < nightDutyDays.length - 1; i++) {
+    const currentIndex = nightDutyDays[i] - 1;
+    const nextIndex = nightDutyDays[i + 1] - 1;
 
+    // First day's inTime remains unchanged
     if (i === 0) {
-      if (attendanceData[index].inTime === "NA") {
-        attendanceData[index].inTime = attendanceData[index].outTime;
-      }
-    } else {
-      attendanceData[index].inTime = attendanceData[nightDutyDays[i - 1]].outTime;
-    }
-
-    if (i < nightDutyDays.length - 1) {
-      attendanceData[index].outTime = convertTo24HourFormat(
-        attendanceData[nightDutyDays[i + 1]].inTime
+      console.log(
+        `Current index is: ${currentIndex}-${attendanceData[currentIndex].inTime}`
       );
+      console.log(
+        `Next index is: ${nextIndex}-${attendanceData[nextIndex].inTime}`
+      );
+      attendanceData[currentIndex].outTime = attendanceData[nextIndex].inTime;
     } else {
-      attendanceData[index].outTime = convertTo24HourFormat(attendanceData[index].inTime);
+      attendanceData[currentIndex].inTime =
+        attendanceData[currentIndex].outTime;
+      attendanceData[currentIndex].outTime = attendanceData[nextIndex].inTime;
     }
   }
 
-  return attendanceData
+  // Last day's inTime becomes its outTime
+  const lastIndex = nightDutyDays[nightDutyDays.length - 1] - 1;
+  attendanceData[lastIndex].inTime = attendanceData[lastIndex].outTime;
+  attendanceData[lastIndex].outTime = attendanceData[lastIndex + 1].inTime;
+  attendanceData[lastIndex + 1].inTime = "NA";
+
+  return attendanceData;
 };
 
 export default FormatNightTime;
