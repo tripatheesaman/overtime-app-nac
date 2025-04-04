@@ -25,3 +25,13 @@ model OverTimeDetails{
   attendancedata  Json
   createdAt DateTime @default(now())
 }
+
+model DayDetails{
+  id  Int @id @default(autoincrement())
+  name  String
+  startingday Int
+  numberofdays  Int
+  holidays Json
+  year  Int
+  isActiveMonth Boolean @default(false)
+}
