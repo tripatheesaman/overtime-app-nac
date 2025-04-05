@@ -20,7 +20,6 @@ const Step4 = () =>{
         setIsLoading(true)
         setFormData({nightDutyDays:selectedDays})
         const response = await sendFormData(formData)
-        console.log(response)
 
 
     }
