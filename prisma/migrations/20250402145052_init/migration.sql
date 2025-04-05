@@ -19,3 +19,16 @@ CREATE TABLE `OverTimeDetails` (
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `DayDetails` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(191) NOT NULL,
+    `startingday` INTEGER NOT NULL,
+    `numberofdays` INTEGER NOT NULL,
+    `holidays` JSON NOT NULL,
+    `year` INTEGER NOT NULL,
+    `isActiveMonth` BOOLEAN NOT NULL DEFAULT false,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

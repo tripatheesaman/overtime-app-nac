@@ -25,14 +25,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid data" }, { status: 400 });
     }
 
-    console.log("Received attendance data:", attendanceData); // ✅ Debugging
 
     const formattedRecords = attendanceData.map((record) => ({
       inTime: convertDecimalToRoundedTime(record.inTime),
       outTime: convertDecimalToRoundedTime(record.outTime),
     }));
-
-    console.log("Formatted attendance data:", formattedRecords)
 
     return NextResponse.json(
       { message: "Data successfully uploaded!" },
