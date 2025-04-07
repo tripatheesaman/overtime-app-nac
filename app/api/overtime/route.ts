@@ -3,6 +3,7 @@ import { FormData } from "@/app/types/InputFormType";
 import processRawTime from "@/app/lib/helpers/timetransformation";
 import FormatNightTime from "@/app/lib/helpers/formatNightTime";
 import ProcessBlankTimes from "@/app/lib/helpers/processblanktimes";
+import CalculateOvertime from "@/app/lib/helpers/calculateovertime";
 
 export const POST = async (req: NextRequest) => {
   if (req.method !== "POST") {
@@ -130,6 +131,18 @@ export const POST = async (req: NextRequest) => {
       );
     }
   }
-  console.log(finalProcessedData)
+
+  if (finalProcessedData === undefined)
+    return NextResponse.json(
+      { error: "Undefined finalProcessedData" },
+      { status: 400 }
+    );
+  const overTimeData = CalculateOvertime(
+    finalProcessedData,
+    data.nightDutyDays,
+    data.dutyStartTime,
+    data.dutyEndTime,
+    data.regularOffDay
+  );
   // return NextResponse.json(finalProcessedData, { status: 200 });
 };
