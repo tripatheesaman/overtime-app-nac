@@ -4,6 +4,7 @@ export const sendFormData = async (
   formData: FormData
 ) => {
   try {
+    console.log(formData)
     const response = await fetch("/api/overtime", {
       method: "POST",
       headers: {

@@ -61,7 +61,11 @@ function getOvertimeIntervals(
   const midnight = dayjs().startOf("day").add(1, "day");
 
   if (isHoliday) {
+    if (!isNight)
     result.holiday = [formatTime(start), formatTime(end)];
+    else
+    result.holiday = [formatTime(start), "23:00"];
+
     if (isNight) {
       const nightStart = dayjs().startOf("day").add(1, "day");
       if (end.isAfter(nightStart)) {
@@ -105,6 +109,7 @@ const CalculateOvertime = async (
     night?: [string, string];
     holiday?: [string, string];
     totalHours: number;
+    totalNightHours: number;
     isHolidayOvertime: boolean;
     typeOfHoliday: string | null;
     hasBeforeDutyOvertime: boolean;
@@ -145,6 +150,7 @@ const CalculateOvertime = async (
     );
 
     let total = 0;
+    let nightTotal = 0
     const hasBeforeDutyOvertime = !!overtime.beforeDuty;
     const hasAfterDutyOvertime = !!overtime.afterDuty;
     const hasNightOvertime = !!overtime.night;
@@ -162,11 +168,13 @@ const CalculateOvertime = async (
     if (hasNightOvertime && !isNightDuty) {
       total += calculateDuration(...overtime.night!);
     }
+    if (hasNightOvertime && isNightDuty) nightTotal += calculateDuration(...overtime.night!)
 
     results.push({
       day: dayNumber,
       ...overtime,
       totalHours: parseFloat(total.toFixed(2)),
+      totalNightHours:parseFloat(nightTotal.toFixed(2)),
       isHolidayOvertime,
       typeOfHoliday,
       hasBeforeDutyOvertime,
@@ -175,7 +183,7 @@ const CalculateOvertime = async (
     });
   }
 
-  console.log(results)
+  return results
 };
 
 export default CalculateOvertime;

@@ -137,12 +137,19 @@ export const POST = async (req: NextRequest) => {
       { error: "Undefined finalProcessedData" },
       { status: 400 }
     );
-  const overTimeData = CalculateOvertime(
+  const overTimeData = await CalculateOvertime(
     finalProcessedData,
     data.nightDutyDays,
     data.dutyStartTime,
     data.dutyEndTime,
     data.regularOffDay
   );
-  // return NextResponse.json(finalProcessedData, { status: 200 });
+  return NextResponse.json(
+    {
+      success: true,
+      overtimeData: overTimeData,
+    },
+    { status: 200 }
+  );
+
 };
