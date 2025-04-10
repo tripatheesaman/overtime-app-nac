@@ -32,6 +32,7 @@ function calculateDuration(startStr: string, endStr: string): number {
 }
 
 function getDayName(startDay: number, dayIndex: number) {
+  console.log(startDay,dayIndex)
   return dayNames[(startDay + dayIndex) % 7];
 }
 
@@ -97,13 +98,14 @@ const CalculateOvertime = async (
   regularOffDay: string
 ) => {
   const currentMonthDetails = await getCurrentMonthDetails();
-  const { startDay, holidays, numberOfDays } = currentMonthDetails;
+  const { startDay, holidays, numberOfDays, name } = currentMonthDetails;
 
   const nightStart = "17:00";
   const nightEnd = "23:00";
 
   const results: {
     day: number;
+    currentMonth:string;
     beforeDuty?: [string, string];
     afterDuty?: [string, string];
     night?: [string, string];
@@ -119,18 +121,22 @@ const CalculateOvertime = async (
 
   for (let i = 0; i < numberOfDays; i++) {
     const record = attendanceData[i];
-    const dayNumber = i + 1;
+    const dayNumber = i+1;
 
-    if (!record || record.inTime === "NA" || record.outTime === "NA") {
-      continue;
-    }
+    // if (!record || record.inTime === "NA" || record.outTime === "NA") {
+    //   continue;
+    // }
 
     const currentDayName = getDayName(startDay, i);
     const isOffDay =
       currentDayName.toLowerCase() === regularOffDay.toLowerCase();
     const isCHD = holidays.includes(dayNumber);
+    // console.log(holidays)
+    // console.log(currentDayName, regularOffDay)
     const isHoliday = isOffDay || isCHD;
-
+    const nextDayName = getDayName(startDay, i + 1);
+    const isDayBeforeOff =
+      nextDayName.toLowerCase() === regularOffDay.toLowerCase();
     let typeOfHoliday = null;
     if (isOffDay && isCHD) typeOfHoliday = "OFF+CHD";
     else if (isOffDay) typeOfHoliday = "OFF";
@@ -138,8 +144,24 @@ const CalculateOvertime = async (
 
     const isNightDuty = nightDutyDays.includes(dayNumber);
     const dutyStartTime = isNightDuty ? nightStart : regularStart;
-    const dutyEndTime = isNightDuty ? nightEnd : regularEnd;
-
+    let dutyEndTime = isNightDuty ? nightEnd : regularEnd;
+    if (isDayBeforeOff && !isNightDuty) {
+      dutyEndTime = "15:00";
+    }
+    if (!record || record.inTime === "NA" || record.outTime === "NA") {
+      results.push({
+        day: dayNumber,
+        currentMonth: name,
+        totalHours: 0,
+        totalNightHours: 0,
+        isHolidayOvertime: isHoliday,
+        typeOfHoliday,
+        hasBeforeDutyOvertime: false,
+        hasAfterDutyOvertime: false,
+        hasNightOvertime: false,
+      });
+      continue;
+  }
     const overtime = getOvertimeIntervals(
       record.inTime,
       record.outTime,
@@ -172,6 +194,7 @@ const CalculateOvertime = async (
 
     results.push({
       day: dayNumber,
+      currentMonth:name,
       ...overtime,
       totalHours: parseFloat(total.toFixed(2)),
       totalNightHours:parseFloat(nightTotal.toFixed(2)),
