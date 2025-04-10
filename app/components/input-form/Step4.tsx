@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useFormContext } from "@/app/context/FormContext";
 import { sendFormData } from "@/app/utils/api";
 import { useState } from "react";
@@ -62,8 +64,13 @@ const Step4 = () => {
 
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(arrayBuffer);
-
     const sheet = workbook.getWorksheet(1); // Or use sheet name if known
+
+    if (!sheet) {
+      setIsError(true);
+      setResponseMessage("Failed to load the worksheet.");
+      return;
+    }
 
     let row = 10;
     let totalRegularOT = 0;
@@ -72,14 +79,12 @@ const Step4 = () => {
     console.log(overtimeData);
     overtimeData.forEach((entry) => {
       const currentRow = sheet.getRow(row);
-      let currentTotalHours = 0;
-      sheet.getCell("L5").value =  entry.currentMonth;
+      sheet.getCell("L5").value = entry.currentMonth;
 
       if (entry.beforeDuty) {
         currentRow.getCell("B").value = entry.beforeDuty[0];
         currentRow.getCell("C").value = entry.beforeDuty[1];
         totalRegularOT += entry.totalHours;
-        currentTotalHours += entry.totalHours;
       }
 
       if (entry.holiday) {
@@ -108,7 +113,7 @@ const Step4 = () => {
       currentRow.commit();
       row++;
     });
-    sheet.getCell("A4").value = `Name:${formData.name}`
+    sheet.getCell("A4").value = `Name:${formData.name}`;
     sheet.getCell("A5").value = `Designation:${formData.designation}`;
     sheet.getCell("A6").value = `Staff No: :${formData.staffId}`;
     sheet.getCell("L6").value = formData.regularOffDay;
