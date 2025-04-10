@@ -22,6 +22,12 @@ const Step4 = () => {
     setStep(step - 1);
   };
 
+  const formatTotalHours = (hours: number) => {
+    if (hours === 0) return;
+    const formattedHours = `${hours}:00`;
+    return formattedHours;
+  };
+
   const handleSubmit = async () => {
     setIsLoading(true);
     setResponseMessage(null);
@@ -62,15 +68,18 @@ const Step4 = () => {
     let row = 10;
     let totalRegularOT = 0;
     let totalHolidayOT = 0;
-    console.log(overtimeData)
+    let totalNightHours = 0;
+    console.log(overtimeData);
     overtimeData.forEach((entry) => {
       const currentRow = sheet.getRow(row);
-      let currentTotalHours = 0
+      let currentTotalHours = 0;
+      sheet.getCell("L5").value =  entry.currentMonth;
+
       if (entry.beforeDuty) {
         currentRow.getCell("B").value = entry.beforeDuty[0];
         currentRow.getCell("C").value = entry.beforeDuty[1];
         totalRegularOT += entry.totalHours;
-        currentTotalHours += entry.totalHours
+        currentTotalHours += entry.totalHours;
       }
 
       if (entry.holiday) {
@@ -89,16 +98,27 @@ const Step4 = () => {
         currentRow.getCell("I").value = entry.night[0];
         currentRow.getCell("J").value = entry.night[1];
       }
-
-      currentRow.getCell("H").value = entry.totalHours;
+      if (entry.totalHours > 0)
+        currentRow.getCell("H").value = formatTotalHours(entry.totalHours);
+      if (entry.totalNightHours > 0)
+        currentRow.getCell("K").value = formatTotalHours(entry.totalNightHours);
+      if (entry.typeOfHoliday !== null)
+        currentRow.getCell("L").value = entry.typeOfHoliday;
+      totalNightHours += entry.totalNightHours;
       currentRow.commit();
       row++;
     });
+    sheet.getCell("A4").value = `Name:${formData.name}`
+    sheet.getCell("A5").value = `Designation:${formData.designation}`;
+    sheet.getCell("A6").value = `Staff No: :${formData.staffId}`;
+    sheet.getCell("L6").value = formData.regularOffDay;
 
     // Set total values
     sheet.getCell("H43").value = totalRegularOT.toFixed(2);
     sheet.getCell("D43").value = totalHolidayOT.toFixed(2);
     sheet.getCell("F44").value = (totalRegularOT + totalHolidayOT).toFixed(2);
+    if (totalNightHours > 0)
+      sheet.getCell("K43").value = totalNightHours.toFixed(2);
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
