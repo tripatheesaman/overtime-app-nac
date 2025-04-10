@@ -11,9 +11,6 @@ const getCurrentMonthDetails = async (): Promise<
     });
     if (!currentMonthDetails)
       return { message: "No date details found !", status: 404 };
-    const holidays =
-      (currentMonthDetails.holidays as unknown as string[]) || [];
-
     const dayDetails: DayDetailsType = {
       startDay: currentMonthDetails.startingday,
       holidays:

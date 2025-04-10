@@ -1,6 +1,5 @@
 import getCurrentMonthDetails from "@/app/services/DayDetails";
 import { AttendanceRecord } from "@/app/types/InputFormType";
-import { ErrorReturnType } from "@/app/types/ErrorReturnType";
 
 const daysOfWeek = [
   "Sunday",
