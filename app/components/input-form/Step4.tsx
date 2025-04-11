@@ -76,7 +76,6 @@ const Step4 = () => {
     let totalRegularOT = 0;
     let totalHolidayOT = 0;
     let totalNightHours = 0;
-    console.log(overtimeData);
     overtimeData.forEach((entry) => {
       const currentRow = sheet.getRow(row);
       sheet.getCell("L5").value = entry.currentMonth;
@@ -84,7 +83,6 @@ const Step4 = () => {
       if (entry.beforeDuty) {
         currentRow.getCell("B").value = entry.beforeDuty[0];
         currentRow.getCell("C").value = entry.beforeDuty[1];
-        totalRegularOT += entry.totalHours;
       }
 
       if (entry.holiday) {
@@ -96,7 +94,6 @@ const Step4 = () => {
       if (entry.afterDuty) {
         currentRow.getCell("F").value = entry.afterDuty[0];
         currentRow.getCell("G").value = entry.afterDuty[1];
-        totalRegularOT += entry.totalHours;
       }
 
       if (entry.night) {
@@ -110,6 +107,8 @@ const Step4 = () => {
       if (entry.typeOfHoliday !== null)
         currentRow.getCell("L").value = entry.typeOfHoliday;
       totalNightHours += entry.totalNightHours;
+      if (!entry.holiday)
+        totalRegularOT += entry.totalHours;
       currentRow.commit();
       row++;
     });
