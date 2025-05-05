@@ -2,7 +2,6 @@ import { useFormContext } from "@/app/context/FormContext";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { FormData } from "@/app/types/InputFormType";
 import { useState } from "react";
 
 const baseTimeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -53,6 +52,8 @@ const schema = z
     }
   });
 
+type FormValues = z.infer<typeof schema>;
+
 const Step2 = () => {
   const { setStep, formData, setFormData } = useFormContext();
   const [morningShiftEnabled, setMorningShiftEnabled] = useState(!!formData.morningShiftStartTime);
@@ -60,7 +61,7 @@ const Step2 = () => {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm({
+  } = useForm<FormValues>({
     defaultValues: {
       dutyStartTime: formData.dutyStartTime,
       dutyEndTime: formData.dutyEndTime,
@@ -78,7 +79,7 @@ const Step2 = () => {
     setStep(1);
   };
 
-  const onSubmit = (data: any) => {
+  const onSubmit = (data: FormValues) => {
     setFormData({
       ...data,
       morningShiftStartTime: morningShiftEnabled ? data.morningShiftStartTime : "",
