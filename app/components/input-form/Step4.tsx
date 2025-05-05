@@ -11,11 +11,20 @@ const Step4 = () => {
   const [selectedDays, setSelectedDays] = useState<number[]>(
     formData.nightDutyDays || []
   );
+  const [selectedMorningDays, setSelectedMorningDays] = useState<number[]>(
+    formData.morningShiftDays || []
+  );
   const [responseMessage, setResponseMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState<boolean>(false);
 
   const handleDayClick = (day: number) => {
     setSelectedDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
+  };
+
+  const handleMorningDayClick = (day: number) => {
+    setSelectedMorningDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
     );
   };
@@ -38,6 +47,7 @@ const Step4 = () => {
     const updatedFormData = {
       ...formData,
       nightDutyDays: selectedDays,
+      morningShiftDays: selectedMorningDays,
     };
 
     setFormData(updatedFormData);
@@ -136,7 +146,7 @@ const Step4 = () => {
         Select Night Duty Days
       </h2>
 
-      <div className="grid grid-cols-7 gap-2 p-4 border rounded-md bg-gray-100">
+      <div className="grid grid-cols-7 gap-2 p-4 border rounded-md bg-gray-100 mb-6">
         {[...Array(32)].map((_, index) => {
           const day = index + 1;
           const isSelected = selectedDays.includes(day);
@@ -150,6 +160,30 @@ const Step4 = () => {
                   : "bg-white text-black border hover:bg-gray-200"
               }`}
               onClick={() => handleDayClick(day)}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+
+      <h2 className="text-xl font-bold mb-4 text-center">
+        Select Morning Shift Days
+      </h2>
+      <div className="grid grid-cols-7 gap-2 p-4 border rounded-md bg-yellow-100 mb-6">
+        {[...Array(32)].map((_, index) => {
+          const day = index + 1;
+          const isSelected = selectedMorningDays.includes(day);
+          return (
+            <button
+              key={day}
+              disabled={isLoading}
+              className={`w-10 h-10 flex items-center justify-center rounded-md transition ${
+                isSelected
+                  ? "bg-yellow-500 text-white"
+                  : "bg-white text-black border hover:bg-gray-200"
+              }`}
+              onClick={() => handleMorningDayClick(day)}
             >
               {day}
             </button>

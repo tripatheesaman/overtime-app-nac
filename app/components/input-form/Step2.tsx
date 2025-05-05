@@ -1,58 +1,93 @@
 import { useFormContext } from "@/app/context/FormContext";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import {z} from "zod"
+import { z } from "zod";
 import { FormData } from "@/app/types/InputFormType";
+import { useState } from "react";
 
-const schema = z.object({
-  dutyStartTime: z
-    .string()
-    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format! Use HH:MM"),
-  dutyEndTime: z
-    .string()
-    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format! Use HH:MM"),
-  nightDutyStartTime: z
-    .string()
-    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format! Use HH:MM"),
-  nightDutyEndTime: z
-    .string()
-    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format! Use HH:MM"),
-  regularOffDay: z.enum([
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-  ]),
-});
+const baseTimeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
-const Step2 = ()=>{
-const { step, setStep, formData, setFormData } = useFormContext();  
-const {
-    register, handleSubmit, formState:{errors}
-} = useForm({
-    defaultValues:{
-        dutyStartTime: formData.dutyStartTime,
-        dutyEndTime: formData.dutyEndTime,
-        nightDutyStartTime: formData.nightDutyStartTime || "17:00",
-        nightDutyEndTime: formData.nightDutyEndTime || "23:00",
-        regularOffDay: formData.regularOffDay
+const schema = z
+  .object({
+    dutyStartTime: z
+      .string()
+      .regex(baseTimeRegex, "Invalid time format! Use HH:MM"),
+    dutyEndTime: z
+      .string()
+      .regex(baseTimeRegex, "Invalid time format! Use HH:MM"),
+    nightDutyStartTime: z
+      .string()
+      .regex(baseTimeRegex, "Invalid time format! Use HH:MM"),
+    nightDutyEndTime: z
+      .string()
+      .regex(baseTimeRegex, "Invalid time format! Use HH:MM"),
+    morningShiftEnabled: z.boolean(),
+    morningShiftStartTime: z.string().optional(),
+    morningShiftEndTime: z.string().optional(),
+    regularOffDay: z.enum([
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ]),
+  })
+  .superRefine((data, ctx) => {
+    if (data.morningShiftEnabled) {
+      if (!data.morningShiftStartTime || !baseTimeRegex.test(data.morningShiftStartTime)) {
+        ctx.addIssue({
+          path: ["morningShiftStartTime"],
+          code: z.ZodIssueCode.custom,
+          message: "Invalid time format! Use HH:MM",
+        });
+      }
+      if (!data.morningShiftEndTime || !baseTimeRegex.test(data.morningShiftEndTime)) {
+        ctx.addIssue({
+          path: ["morningShiftEndTime"],
+          code: z.ZodIssueCode.custom,
+          message: "Invalid time format! Use HH:MM",
+        });
+      }
+    }
+  });
+
+const Step2 = () => {
+  const { step, setStep, formData, setFormData } = useFormContext();
+  const [morningShiftEnabled, setMorningShiftEnabled] = useState(!!formData.morningShiftStartTime);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      dutyStartTime: formData.dutyStartTime,
+      dutyEndTime: formData.dutyEndTime,
+      nightDutyStartTime: formData.nightDutyStartTime || "17:00",
+      nightDutyEndTime: formData.nightDutyEndTime || "23:00",
+      morningShiftEnabled: !!formData.morningShiftStartTime,
+      morningShiftStartTime: formData.morningShiftStartTime || "06:00",
+      morningShiftEndTime: formData.morningShiftEndTime || "14:00",
+      regularOffDay: formData.regularOffDay,
     },
-    resolver:zodResolver(schema)
-})
+    resolver: zodResolver(schema),
+  });
 
-const onPrevious = ()=>{
-    setStep(1)
-}
+  const onPrevious = () => {
+    setStep(1);
+  };
 
-const onSubmit = (data:any)=>{
-    setFormData(data)
-    setStep(3)
-}
+  const onSubmit = (data: any) => {
+    setFormData({
+      ...data,
+      morningShiftStartTime: morningShiftEnabled ? data.morningShiftStartTime : "",
+      morningShiftEndTime: morningShiftEnabled ? data.morningShiftEndTime : "",
+    });
+    setStep(3);
+  };
 
-return (
+  return (
     <form onSubmit={handleSubmit(onSubmit)} className="w-full">
       <div className="space-y-4">
         <div>
@@ -67,7 +102,7 @@ return (
           />
           {errors.dutyStartTime && (
             <p className="mt-1 text-sm text-red-600">
-              {errors.dutyStartTime.message}
+              {String(errors.dutyStartTime.message)}
             </p>
           )}
         </div>
@@ -84,7 +119,7 @@ return (
           />
           {errors.dutyEndTime && (
             <p className="mt-1 text-sm text-red-600">
-              {errors.dutyEndTime.message}
+              {String(errors.dutyEndTime.message)}
             </p>
           )}
         </div>
@@ -101,7 +136,7 @@ return (
           />
           {errors.nightDutyStartTime && (
             <p className="mt-1 text-sm text-red-600">
-              {errors.nightDutyStartTime.message}
+              {String(errors.nightDutyStartTime.message)}
             </p>
           )}
         </div>
@@ -118,10 +153,59 @@ return (
           />
           {errors.nightDutyEndTime && (
             <p className="mt-1 text-sm text-red-600">
-              {errors.nightDutyEndTime.message}
+              {String(errors.nightDutyEndTime.message)}
             </p>
           )}
         </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            <input
+              type="checkbox"
+              checked={morningShiftEnabled}
+              onChange={e => setMorningShiftEnabled(e.target.checked)}
+              className="mr-2"
+            />
+            Enable Morning Shift
+          </label>
+        </div>
+
+        {morningShiftEnabled && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Morning Shift Start Time
+              </label>
+              <input
+                type="text"
+                {...register("morningShiftStartTime")}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                placeholder="HH:MM"
+              />
+              {errors.morningShiftStartTime && (
+                <p className="mt-1 text-sm text-red-600">
+                  {String(errors.morningShiftStartTime.message)}
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Morning Shift End Time
+              </label>
+              <input
+                type="text"
+                {...register("morningShiftEndTime")}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                placeholder="HH:MM"
+              />
+              {errors.morningShiftEndTime && (
+                <p className="mt-1 text-sm text-red-600">
+                  {String(errors.morningShiftEndTime.message)}
+                </p>
+              )}
+            </div>
+          </>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700">
@@ -141,7 +225,7 @@ return (
           </select>
           {errors.regularOffDay && (
             <p className="mt-1 text-sm text-red-600">
-              {errors.regularOffDay.message}
+              {String(errors.regularOffDay.message)}
             </p>
           )}
         </div>
