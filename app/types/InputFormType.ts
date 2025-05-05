@@ -19,6 +19,8 @@ export interface FormData {
   regularOffDay: dayOfWeek;
   dutyStartTime: string;
   dutyEndTime: string;
+  nightDutyStartTime: string;
+  nightDutyEndTime: string;
   inOutTimes: AttendanceRecord[];
   nightDutyDays: number[];
 }
