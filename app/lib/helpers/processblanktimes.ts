@@ -1,5 +1,6 @@
 import getCurrentMonthDetails from "@/app/services/DayDetails";
 import { AttendanceRecord } from "@/app/types/InputFormType";
+import dayjs from "dayjs";
 
 const daysOfWeek = [
   "Sunday",
@@ -10,6 +11,13 @@ const daysOfWeek = [
   "Friday",
   "Saturday",
 ];
+
+const calculateTwoHoursBefore = (time: string): string => {
+  const [hours, minutes] = time.split(":").map(Number);
+  const date = dayjs().hour(hours).minute(minutes);
+  const twoHoursBefore = date.subtract(2, "hour");
+  return twoHoursBefore.format("HH:mm");
+};
 
 const ProcessBlankTimes = async (
   attendanceData: AttendanceRecord[],
@@ -52,14 +60,14 @@ const ProcessBlankTimes = async (
         return { inTime, outTime };
       } else {
         inTime = regularInTime;
-        outTime = isDayBeforeOff && !isHoliday ? "15:00" : regularOutTime;
+        outTime = isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(regularOutTime) : regularOutTime;
       }
     } else {
       if (inTime === "NA") {
         inTime = regularInTime;
       }
       if (outTime === "NA") {
-        outTime = isDayBeforeOff && !isHoliday ? "15:00" : regularOutTime;
+        outTime = isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(regularOutTime) : regularOutTime;
       }
     }
 

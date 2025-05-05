@@ -12,6 +12,13 @@ const dayNames = [
   "Saturday",
 ];
 
+const calculateTwoHoursBefore = (time: string): string => {
+  const [hours, minutes] = time.split(":").map(Number);
+  const date = dayjs().hour(hours).minute(minutes);
+  const twoHoursBefore = date.subtract(2, "hour");
+  return twoHoursBefore.format("HH:mm");
+};
+
 function parseTime(timeStr: string, dayOffset = 0) {
   const [h, m] = timeStr.split(":").map(Number);
   return dayjs()
@@ -151,7 +158,7 @@ const CalculateOvertime = async (
       const dutyStartTime = isNightDuty ? nightStart : regularStart;
       let dutyEndTime = isNightDuty ? nightEnd : regularEnd;
       if (isDayBeforeOff && !isNightDuty) {
-        dutyEndTime = "15:00";
+        dutyEndTime = calculateTwoHoursBefore(regularEnd);
       }
       if (!record || record.inTime === "NA" || record.outTime === "NA") {
         results.push({
