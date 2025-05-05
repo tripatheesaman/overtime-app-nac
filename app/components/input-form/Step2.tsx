@@ -54,7 +54,7 @@ const schema = z
   });
 
 const Step2 = () => {
-  const { step, setStep, formData, setFormData } = useFormContext();
+  const { setStep, formData, setFormData } = useFormContext();
   const [morningShiftEnabled, setMorningShiftEnabled] = useState(!!formData.morningShiftStartTime);
   const {
     register,
