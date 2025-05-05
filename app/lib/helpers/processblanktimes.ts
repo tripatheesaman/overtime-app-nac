@@ -33,7 +33,6 @@ const ProcessBlankTimes = async (
     "message" in currentMonthDetails &&
     "status" in currentMonthDetails
   ) {
-    console.error("Month details error:", currentMonthDetails.message);
     return;
   }
 
