@@ -1,6 +1,6 @@
 import { createContext, useContext, useState } from "react";
-import { ReactNode } from "react";
 import { FormData } from "@/app/types/InputFormType";
+
 interface ContextType{
     formData:FormData
     setFormData:(data:Partial<FormData>)=>void
@@ -9,12 +9,26 @@ interface ContextType{
 }
 
 interface FormContextProviderProps{
-    children:ReactNode
+    children:React.ReactNode
 }
 const FormContext = createContext<ContextType | undefined>(undefined)
 
 export const FormContextProvider:React.FC<FormContextProviderProps> = ({children})=>{
-    const [formData, setFormData] = useState<FormData>({name:"",staffId:"",regularOffDay:"Saturday",designation:"",dutyStartTime:"",dutyEndTime:"",inOutTimes:[], nightDutyDays:[]})
+    const [formData, setFormData] = useState<FormData>({
+        name: "",
+        staffId: "",
+        regularOffDay: "Saturday",
+        designation: "",
+        dutyStartTime: "",
+        dutyEndTime: "",
+        nightDutyStartTime: "",
+        nightDutyEndTime: "",
+        morningShiftStartTime: "",
+        morningShiftEndTime: "",
+        inOutTimes: [],
+        nightDutyDays: [],
+        morningShiftDays: [],
+    })
     const [step, setStep] = useState(1)
 
     const updateFormData = (data:Partial<FormData>)=>{
