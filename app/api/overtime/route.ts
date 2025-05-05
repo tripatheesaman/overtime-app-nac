@@ -144,7 +144,9 @@ export const POST = async (req: NextRequest) => {
     data.nightDutyDays,
     data.dutyStartTime,
     data.dutyEndTime,
-    data.regularOffDay
+    data.regularOffDay,
+    data.nightDutyStartTime,
+    data.nightDutyEndTime
   );
   // console.log(overTimeData)
   return NextResponse.json(

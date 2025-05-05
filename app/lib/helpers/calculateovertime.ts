@@ -49,7 +49,9 @@ function getOvertimeIntervals(
   dutyStart: string,
   dutyEnd: string,
   isHoliday: boolean,
-  isNight: boolean
+  isNight: boolean,
+  nightDutyStart: string,
+  nightDutyEnd: string
 ) {
   const result: {
     beforeDuty?: [string, string];
@@ -67,29 +69,48 @@ function getOvertimeIntervals(
   const dutyStartTime = parseTime(dutyStart);
   const dutyEndTime = parseTime(dutyEnd);
   const midnight = dayjs().startOf("day").add(1, "day");
+  const nightStartTime = parseTime(nightDutyStart);
+  const nightEndTime = parseTime(nightDutyEnd);
 
   if (isHoliday) {
-    if (!isNight) result.holiday = [formatTime(start), formatTime(end)];
-    else result.holiday = [formatTime(start), "23:00"];
-
     if (isNight) {
-      const nightStart = dayjs().startOf("day").add(1, "day");
-      if (end.isAfter(nightStart)) {
-        result.night = [formatTime(nightStart), formatTime(end)];
+      // For night duty on holidays, everything before midnight is holiday overtime
+      if (end.isAfter(midnight)) {
+        result.holiday = [formatTime(start), formatTime(midnight)];
+        result.night = [formatTime(midnight), formatTime(end)];
+      } else {
+        result.holiday = [formatTime(start), formatTime(end)];
       }
+    } else {
+      result.holiday = [formatTime(start), formatTime(end)];
     }
     return result;
   }
 
-  if (start.isBefore(dutyStartTime)) {
-    result.beforeDuty = [formatTime(start), formatTime(dutyStartTime)];
-  }
+  if (isNight) {
+    // For regular night duty
+    if (start.isBefore(nightStartTime)) {
+      result.beforeDuty = [formatTime(start), formatTime(nightStartTime)];
+    }
 
-  if (end.isAfter(dutyEndTime) && end.isBefore(midnight)) {
-    result.afterDuty = [formatTime(dutyEndTime), formatTime(end)];
-  } else if (end.isAfter(midnight)) {
-    result.afterDuty = [formatTime(dutyEndTime), formatTime(midnight)];
-    result.night = [formatTime(midnight), formatTime(end)];
+    if (end.isAfter(midnight)) {
+      result.afterDuty = [formatTime(nightEndTime), formatTime(midnight)];
+      result.night = [formatTime(midnight), formatTime(end)];
+    } else if (end.isAfter(nightEndTime)) {
+      result.afterDuty = [formatTime(nightEndTime), formatTime(end)];
+    }
+  } else {
+    // For regular duty
+    if (start.isBefore(dutyStartTime)) {
+      result.beforeDuty = [formatTime(start), formatTime(dutyStartTime)];
+    }
+
+    if (end.isAfter(dutyEndTime) && end.isBefore(midnight)) {
+      result.afterDuty = [formatTime(dutyEndTime), formatTime(end)];
+    } else if (end.isAfter(midnight)) {
+      result.afterDuty = [formatTime(dutyEndTime), formatTime(midnight)];
+      result.night = [formatTime(midnight), formatTime(end)];
+    }
   }
 
   return result;
@@ -100,7 +121,9 @@ const CalculateOvertime = async (
   nightDutyDays: number[] = [],
   regularStart: string,
   regularEnd: string,
-  regularOffDay: string
+  regularOffDay: string,
+  nightDutyStart: string,
+  nightDutyEnd: string
 ) => {
   const currentMonthDetails = await getCurrentMonthDetails();
 
@@ -111,9 +134,6 @@ const CalculateOvertime = async (
     "name" in currentMonthDetails
   ) {
     const { startDay, holidays, numberOfDays, name } = currentMonthDetails;
-
-    const nightStart = "17:00";
-    const nightEnd = "23:00";
 
     const results: {
       day: number;
@@ -155,8 +175,8 @@ const CalculateOvertime = async (
       else if (isCHD) typeOfHoliday = "CHD";
 
       const isNightDuty = nightDutyDays.includes(dayNumber);
-      const dutyStartTime = isNightDuty ? nightStart : regularStart;
-      let dutyEndTime = isNightDuty ? nightEnd : regularEnd;
+      const dutyStartTime = isNightDuty ? nightDutyStart : regularStart;
+      let dutyEndTime = isNightDuty ? nightDutyEnd : regularEnd;
       if (isDayBeforeOff && !isNightDuty) {
         dutyEndTime = calculateTwoHoursBefore(regularEnd);
       }
@@ -180,7 +200,9 @@ const CalculateOvertime = async (
         dutyStartTime,
         dutyEndTime,
         isHoliday,
-        isNightDuty
+        isNightDuty,
+        nightDutyStart,
+        nightDutyEnd
       );
 
       let total = 0;

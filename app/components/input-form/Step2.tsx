@@ -11,6 +11,12 @@ const schema = z.object({
   dutyEndTime: z
     .string()
     .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format! Use HH:MM"),
+  nightDutyStartTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format! Use HH:MM"),
+  nightDutyEndTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format! Use HH:MM"),
   regularOffDay: z.enum([
     "Sunday",
     "Monday",
@@ -27,92 +33,138 @@ const { step, setStep, formData, setFormData } = useFormContext();
 const {
     register, handleSubmit, formState:{errors}
 } = useForm({
-    defaultValues:formData,
+    defaultValues:{
+        dutyStartTime: formData.dutyStartTime,
+        dutyEndTime: formData.dutyEndTime,
+        nightDutyStartTime: formData.nightDutyStartTime || "17:00",
+        nightDutyEndTime: formData.nightDutyEndTime || "23:00",
+        regularOffDay: formData.regularOffDay
+    },
     resolver:zodResolver(schema)
 })
 
-const onSubmit = (data: Partial<FormData>)=>{
+const onPrevious = ()=>{
+    setStep(1)
+}
+
+const onSubmit = (data:any)=>{
     setFormData(data)
     setStep(3)
-
-
 }
-const onPrevious = () => {
-  setStep(step - 1);
+
+return (
+    <form onSubmit={handleSubmit(onSubmit)} className="w-full">
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Regular Duty Start Time
+          </label>
+          <input
+            type="text"
+            {...register("dutyStartTime")}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            placeholder="HH:MM"
+          />
+          {errors.dutyStartTime && (
+            <p className="mt-1 text-sm text-red-600">
+              {errors.dutyStartTime.message}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Regular Duty End Time
+          </label>
+          <input
+            type="text"
+            {...register("dutyEndTime")}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            placeholder="HH:MM"
+          />
+          {errors.dutyEndTime && (
+            <p className="mt-1 text-sm text-red-600">
+              {errors.dutyEndTime.message}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Night Duty Start Time
+          </label>
+          <input
+            type="text"
+            {...register("nightDutyStartTime")}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            placeholder="HH:MM"
+          />
+          {errors.nightDutyStartTime && (
+            <p className="mt-1 text-sm text-red-600">
+              {errors.nightDutyStartTime.message}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Night Duty End Time
+          </label>
+          <input
+            type="text"
+            {...register("nightDutyEndTime")}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            placeholder="HH:MM"
+          />
+          {errors.nightDutyEndTime && (
+            <p className="mt-1 text-sm text-red-600">
+              {errors.nightDutyEndTime.message}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Regular Off Day
+          </label>
+          <select
+            {...register("regularOffDay")}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            <option value="Sunday">Sunday</option>
+            <option value="Monday">Monday</option>
+            <option value="Tuesday">Tuesday</option>
+            <option value="Wednesday">Wednesday</option>
+            <option value="Thursday">Thursday</option>
+            <option value="Friday">Friday</option>
+            <option value="Saturday">Saturday</option>
+          </select>
+          {errors.regularOffDay && (
+            <p className="mt-1 text-sm text-red-600">
+              {errors.regularOffDay.message}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex justify-between py-4">
+        <button
+          type="button"
+          onClick={onPrevious}
+          className="bg-gray-500 text-white px-4 py-2 rounded-md"
+        >
+          Previous
+        </button>
+
+        <button
+          type="submit"
+          className="bg-blue-500 text-white px-4 py-2 rounded-md"
+        >
+          Next
+        </button>
+      </div>
+    </form>
+  );
 };
- return (
-   <form
-     onSubmit={handleSubmit(onSubmit)}
-     className="p-6 rounded-lg shadow-md max-w-md mx-auto"
-   >
-     <label className="block font-medium">Duty Start Time</label>
-     <input
-       {...register("dutyStartTime")}
-       type="text"
-       placeholder="HH:MM"
-       className="border p-2 rounded-md w-full mt-1"
-     />
-     {errors.dutyStartTime && (
-       <p className="text-red-500 text-sm">{errors.dutyStartTime.message}</p>
-     )}
 
-     {/* Out Time Input */}
-     <label className="block font-medium mt-3">Duty End Time</label>
-     <input
-       {...register("dutyEndTime")}
-       type="text"
-       placeholder="HH:MM"
-       className="border p-2 rounded-md w-full mt-1"
-     />
-     {errors.dutyEndTime && (
-       <p className="text-red-500 text-sm">{errors.dutyEndTime.message}</p>
-     )}
-
-     <label className="block font-medium mt-3">Regular Off Day</label>
-     <select
-       {...register("regularOffDay")}
-       className="border p-2 rounded-md w-full mt-1"
-     >
-       <option className="bg-blue-700" value="">
-         Select Off Day
-       </option>
-       {[
-         "Sunday",
-         "Monday",
-         "Tuesday",
-         "Wednesday",
-         "Thursday",
-         "Friday",
-         "Saturday",
-       ].map((day) => (
-         <option className="bg-blue-700" key={day} value={day}>
-           {day}
-         </option>
-       ))}
-     </select>
-     {errors.regularOffDay && (
-       <p className="text-red-500 text-sm">{errors.regularOffDay.message}</p>
-     )}
-
-     <div className="flex justify-between py-4">
-       <button
-         type="button"
-         onClick={onPrevious}
-         className="bg-gray-500 text-white px-4 py-2 rounded-md"
-       >
-         Previous
-       </button>
-
-       <button
-         type="submit"
-         className="bg-blue-500 text-white px-4 py-2 rounded-md"
-       >
-         Next
-       </button>
-     </div>
-   </form>
- );
-};
-
-
-export default Step2
+export default Step2;
