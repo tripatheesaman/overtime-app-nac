@@ -71,7 +71,6 @@ export const POST = async (req: NextRequest) => {
       { status: 400 }
     );
   }
-  // console.log(data.inOutTimes)
   let processedAttendanceData;
   try {
     processedAttendanceData = processRawTime(data.inOutTimes);
@@ -90,11 +89,7 @@ export const POST = async (req: NextRequest) => {
   }
   if (data.nightDutyDays && Array.isArray(data.nightDutyDays) && data.nightDutyDays.length > 0) {
     try {
-      processedAttendanceData = FormatNightTime(
-        processedAttendanceData,
-        data.nightDutyDays
-      );
-      
+      processedAttendanceData = FormatNightTime(processedAttendanceData);
     } catch (error: unknown) {
       if (error instanceof Error) {
         return NextResponse.json(
@@ -112,7 +107,6 @@ export const POST = async (req: NextRequest) => {
       }
     }
   }
-  // console.log(processedAttendanceData)
   let finalProcessedData;
   try {
     finalProcessedData = await ProcessBlankTimes(
@@ -121,7 +115,6 @@ export const POST = async (req: NextRequest) => {
       data.dutyEndTime,
       data.regularOffDay
     );
-    console.log(finalProcessedData)
   } catch (error: unknown) {
     if (error instanceof Error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
@@ -146,9 +139,11 @@ export const POST = async (req: NextRequest) => {
     data.dutyEndTime,
     data.regularOffDay,
     data.nightDutyStartTime,
-    data.nightDutyEndTime
+    data.nightDutyEndTime,
+    data.morningShiftDays,
+    data.morningShiftStartTime,
+    data.morningShiftEndTime
   );
-  // console.log(overTimeData)
   return NextResponse.json(
     {
       success: true,
