@@ -121,8 +121,7 @@ const Step4 = () => {
     sheet.getCell("H43").value = totalRegularOT.toFixed(2);
     sheet.getCell("D43").value = totalHolidayOT.toFixed(2);
     sheet.getCell("F44").value = (totalRegularOT + totalHolidayOT).toFixed(2);
-    if (totalNightHours > 0)
-      sheet.getCell("K43").value = totalNightHours.toFixed(2);
+    sheet.getCell("K43").value = totalNightHours.toFixed(2);
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
