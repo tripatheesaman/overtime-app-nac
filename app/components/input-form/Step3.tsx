@@ -3,10 +3,33 @@ import { AttendanceRecord } from "@/app/types/InputFormType";
 import { useState } from "react";
 import * as XLSX from "xlsx";
 
+const convertExcelTimeToHHMM = (value: any): string => {
+  if (!value) return "";
+  
+  // If it's already a number (Excel time value), return as is
+  if (typeof value === "number") {
+    return value.toString();
+  }
+  
+  // If it's a string in HH:MM format, convert to Excel time
+  if (typeof value === "string") {
+    // Remove any leading/trailing spaces and quotes
+    const cleanValue = value.trim().replace(/^['"]|['"]$/g, "");
+    if (/^([01]\d|2[0-3]):([0-5]\d)$/.test(cleanValue)) {
+      const [hours, minutes] = cleanValue.split(":").map(Number);
+      const excelTime = (hours + minutes / 60) / 24;
+      return excelTime.toString();
+    }
+  }
+  
+  return "";
+};
+
 const Step3 = () => {
   const { setStep, setFormData } = useFormContext();
   const [excelData, setExcelData] = useState<AttendanceRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -28,9 +51,9 @@ const Step3 = () => {
       const jsonData: AttendanceRecord[] = rawData
         .slice(0)
         .map((row) => ({
-          inTime: row[0] ? String(row[0]) : "",
-          outTime: row[1] ? String(row[1]) : "",
-        }))
+          inTime: row[0] ? convertExcelTimeToHHMM(row[0]) : "",
+          outTime: row[1] ? convertExcelTimeToHHMM(row[1]) : "",
+        }));
 
       setExcelData(jsonData);
       setFormData({ inOutTimes: jsonData });
@@ -39,10 +62,9 @@ const Step3 = () => {
     reader.readAsArrayBuffer(file);
   };
 
-
   const handleSubmit = async () => {
     setIsLoading(true);
-    setStep(4)
+    setStep(4);
   };
 
   const onPrevious = () => {
