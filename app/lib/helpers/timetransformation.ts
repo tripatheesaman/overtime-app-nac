@@ -1,5 +1,3 @@
-import { AttendanceRecord } from "@/app/types/InputFormType";
-
 const convertDecimalToRoundedTime = (decimalTime: number): string => {
   if (decimalTime === null || decimalTime === undefined) return "--"; // Handle missing values
 
@@ -18,9 +16,7 @@ const convertDecimalToRoundedTime = (decimalTime: number): string => {
   return `${hours.toString().padStart(2, "0")}:00`;
 };
 
-const processRawTime = (
-  attendanceRecords: AttendanceRecord[]
-): AttendanceRecord[] => {
+const processRawTime = (attendanceRecords: any[]): any[] => {
   if (!attendanceRecords.length || !Array.isArray(attendanceRecords)) {
     return [];
   }

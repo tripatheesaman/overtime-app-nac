@@ -1,5 +1,4 @@
 import getCurrentMonthDetails from "@/app/services/DayDetails";
-import { AttendanceRecord } from "@/app/types/InputFormType";
 import dayjs from "dayjs";
 
 const daysOfWeek = [
@@ -20,7 +19,7 @@ const calculateTwoHoursBefore = (time: string): string => {
 };
 
 const ProcessBlankTimes = async (
-  attendanceData: AttendanceRecord[],
+  attendanceData: any[],
   regularInTime: string,
   regularOutTime: string,
   offDay: string

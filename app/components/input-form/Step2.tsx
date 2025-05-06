@@ -92,7 +92,7 @@ const Step2 = () => {
     <form onSubmit={handleSubmit(onSubmit)} className="w-full">
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium" style={{ color: '#003594' }}>
             Regular Duty Start Time
           </label>
           <input
@@ -100,16 +100,17 @@ const Step2 = () => {
             {...register("dutyStartTime")}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="HH:MM"
+            style={{ borderColor: '#003594' }}
           />
           {errors.dutyStartTime && (
-            <p className="mt-1 text-sm text-red-600">
+            <p className="mt-1 text-sm" style={{ color: '#D4483B' }}>
               {String(errors.dutyStartTime.message)}
             </p>
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium" style={{ color: '#003594' }}>
             Regular Duty End Time
           </label>
           <input
@@ -117,16 +118,17 @@ const Step2 = () => {
             {...register("dutyEndTime")}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="HH:MM"
+            style={{ borderColor: '#003594' }}
           />
           {errors.dutyEndTime && (
-            <p className="mt-1 text-sm text-red-600">
+            <p className="mt-1 text-sm" style={{ color: '#D4483B' }}>
               {String(errors.dutyEndTime.message)}
             </p>
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium" style={{ color: '#003594' }}>
             Night Duty Start Time
           </label>
           <input
@@ -134,16 +136,17 @@ const Step2 = () => {
             {...register("nightDutyStartTime")}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="HH:MM"
+            style={{ borderColor: '#003594' }}
           />
           {errors.nightDutyStartTime && (
-            <p className="mt-1 text-sm text-red-600">
+            <p className="mt-1 text-sm" style={{ color: '#D4483B' }}>
               {String(errors.nightDutyStartTime.message)}
             </p>
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium" style={{ color: '#003594' }}>
             Night Duty End Time
           </label>
           <input
@@ -151,21 +154,23 @@ const Step2 = () => {
             {...register("nightDutyEndTime")}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="HH:MM"
+            style={{ borderColor: '#003594' }}
           />
           {errors.nightDutyEndTime && (
-            <p className="mt-1 text-sm text-red-600">
+            <p className="mt-1 text-sm" style={{ color: '#D4483B' }}>
               {String(errors.nightDutyEndTime.message)}
             </p>
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium" style={{ color: '#003594' }}>
             <input
               type="checkbox"
               checked={morningShiftEnabled}
               onChange={e => setMorningShiftEnabled(e.target.checked)}
               className="mr-2"
+              style={{ accentColor: '#003594' }}
             />
             Enable Morning Shift
           </label>
@@ -174,7 +179,7 @@ const Step2 = () => {
         {morningShiftEnabled && (
           <>
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium" style={{ color: '#003594' }}>
                 Morning Shift Start Time
               </label>
               <input
@@ -182,15 +187,16 @@ const Step2 = () => {
                 {...register("morningShiftStartTime")}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 placeholder="HH:MM"
+                style={{ borderColor: '#003594' }}
               />
               {errors.morningShiftStartTime && (
-                <p className="mt-1 text-sm text-red-600">
+                <p className="mt-1 text-sm" style={{ color: '#D4483B' }}>
                   {String(errors.morningShiftStartTime.message)}
                 </p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium" style={{ color: '#003594' }}>
                 Morning Shift End Time
               </label>
               <input
@@ -198,9 +204,10 @@ const Step2 = () => {
                 {...register("morningShiftEndTime")}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 placeholder="HH:MM"
+                style={{ borderColor: '#003594' }}
               />
               {errors.morningShiftEndTime && (
-                <p className="mt-1 text-sm text-red-600">
+                <p className="mt-1 text-sm" style={{ color: '#D4483B' }}>
                   {String(errors.morningShiftEndTime.message)}
                 </p>
               )}
@@ -209,12 +216,13 @@ const Step2 = () => {
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium" style={{ color: '#003594' }}>
             Regular Off Day
           </label>
           <select
             {...register("regularOffDay")}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            style={{ borderColor: '#003594' }}
           >
             <option value="Sunday">Sunday</option>
             <option value="Monday">Monday</option>
@@ -225,7 +233,7 @@ const Step2 = () => {
             <option value="Saturday">Saturday</option>
           </select>
           {errors.regularOffDay && (
-            <p className="mt-1 text-sm text-red-600">
+            <p className="mt-1 text-sm" style={{ color: '#D4483B' }}>
               {String(errors.regularOffDay.message)}
             </p>
           )}
@@ -236,14 +244,16 @@ const Step2 = () => {
         <button
           type="button"
           onClick={onPrevious}
-          className="bg-gray-500 text-white px-4 py-2 rounded-md"
+          className="px-4 py-2 rounded-md"
+          style={{ backgroundColor: '#D4483B', color: 'white' }}
         >
           Previous
         </button>
 
         <button
           type="submit"
-          className="bg-blue-500 text-white px-4 py-2 rounded-md"
+          className="px-4 py-2 rounded-md"
+          style={{ backgroundColor: '#003594', color: 'white' }}
         >
           Next
         </button>

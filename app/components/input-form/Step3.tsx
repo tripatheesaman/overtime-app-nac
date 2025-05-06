@@ -1,6 +1,6 @@
 import { useFormContext } from "@/app/context/FormContext";
 import { AttendanceRecord } from "@/app/types/InputFormType";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 
 const convertExcelTimeToHHMM = (value: string | number | undefined | null): string => {
@@ -29,6 +29,35 @@ const Step3 = () => {
   const { setStep, setFormData } = useFormContext();
   const [excelData, setExcelData] = useState<AttendanceRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [hasExtensionData, setHasExtensionData] = useState<boolean>(false);
+
+  useEffect(() => {
+    // Check for extension data in URL
+    const searchParams = new URLSearchParams(window.location.search);
+    const extensionData = searchParams.get('extensionData');
+    
+    if (extensionData) {
+      try {
+        const parsedData = JSON.parse(extensionData);
+        
+        const formattedData = parsedData.map((record: any) => ({
+          inTime: record.inTime ? convertExcelTimeToHHMM(record.inTime) : "",
+          outTime: record.outTime ? convertExcelTimeToHHMM(record.outTime) : "",
+        }));
+        
+        
+        setExcelData(formattedData);
+        setFormData({ inOutTimes: formattedData });
+        setHasExtensionData(true);
+        
+        // Remove the extension data from URL
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      } catch (error) {
+        console.error('Error parsing extension data:', error);
+      }
+    }
+  }, [setFormData]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -74,19 +103,28 @@ const Step3 = () => {
   return (
     <div className="p-6 bg-white rounded-lg shadow-md max-w-md mx-auto">
       <h2 className="text-xl font-bold mb-4 text-center">
-        Upload Attendance File
+        {hasExtensionData ? "Captured Attendance Data" : "Upload Attendance File"}
       </h2>
 
-      <input
-        type="file"
-        accept=".xlsx, .xls"
-        onChange={handleFileUpload}
-        className="mb-4"
-      />
+      {!hasExtensionData && (
+        <input
+          type="file"
+          accept=".xlsx, .xls"
+          onChange={handleFileUpload}
+          className="mb-4"
+        />
+      )}
 
       {excelData.length > 0 && (
         <div className="mt-4 p-2 border rounded">
           <h3 className="font-medium">Upload Times:</h3>
+          <div className="mt-2">
+            {excelData.map((record, index) => (
+              <div key={index} className="text-sm">
+                Row {index + 1}: In: {record.inTime || 'Empty'}, Out: {record.outTime || 'Empty'}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
