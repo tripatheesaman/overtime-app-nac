@@ -35,6 +35,13 @@ function getDayName(startDay: number, dayIndex: number) {
   return dayNames[(startDay + dayIndex) % 7];
 }
 
+function calculateTwoHoursBefore(time: string): string {
+  const [hours, minutes] = time.split(":").map(Number);
+  const date = dayjs().hour(hours).minute(minutes);
+  const twoHoursBefore = date.subtract(2, "hour");
+  return twoHoursBefore.format("HH:mm");
+}
+
 function getOvertimeIntervals(
   inTime: string,
   outTime: string,
@@ -175,8 +182,13 @@ const CalculateOvertime = async (
       const isNightDuty = nightDutyDays.includes(dayNumber);
       const isMorningShift = morningShiftDays.includes(dayNumber);
 
+      // Check if next day is off day
+      const nextDayIndex = (startDay + i + 1) % 7;
+      const nextDayName = dayNames[nextDayIndex];
+      const isDayBeforeOff = nextDayName.toLowerCase() === regularOffDay.toLowerCase();
+
       const dutyStartTime = isNightDuty ? nightDutyStart : regularStart;
-      const dutyEndTime = isNightDuty ? nightDutyEnd : regularEnd;
+      const dutyEndTime = isNightDuty ? nightDutyEnd : (isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(regularEnd) : regularEnd);
 
       if (!record || record.inTime === "NA" || record.outTime === "NA") {
         results.push({
