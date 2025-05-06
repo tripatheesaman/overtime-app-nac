@@ -1,9 +1,4 @@
-interface AttendanceRecord {
-  inTime: string;
-  outTime: string;
-}
-
-const FormatNightTime = (attendanceData: AttendanceRecord[]) => {
+const FormatNightTime = (attendanceData: any[]) => {
   // No longer need to swap times, just return the data as is
   return attendanceData;
 };

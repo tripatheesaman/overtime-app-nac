@@ -18,13 +18,8 @@ const calculateTwoHoursBefore = (time: string): string => {
   return twoHoursBefore.format("HH:mm");
 };
 
-interface AttendanceRecord {
-  inTime: string;
-  outTime: string;
-}
-
 const ProcessBlankTimes = async (
-  attendanceData: AttendanceRecord[],
+  attendanceData: any[],
   regularInTime: string,
   regularOutTime: string,
   offDay: string
