@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: parsedData });
   } catch (error) {
     return NextResponse.json(
-      { error: "Invalid data format" },
+      { error: `Invalid data format: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 400 }
     );
   }
