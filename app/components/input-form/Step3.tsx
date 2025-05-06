@@ -3,7 +3,7 @@ import { AttendanceRecord } from "@/app/types/InputFormType";
 import { useState } from "react";
 import * as XLSX from "xlsx";
 
-const convertExcelTimeToHHMM = (value: any): string => {
+const convertExcelTimeToHHMM = (value: string | number | undefined | null): string => {
   if (!value) return "";
   
   // If it's already a number (Excel time value), return as is
