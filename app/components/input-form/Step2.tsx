@@ -89,173 +89,176 @@ const Step2 = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="w-full">
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium" style={{ color: '#003594' }}>
-            Regular Duty Start Time
-          </label>
-          <input
-            type="text"
-            {...register("dutyStartTime")}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="HH:MM"
-            style={{ borderColor: '#003594' }}
-          />
-          {errors.dutyStartTime && (
-            <p className="mt-1 text-sm" style={{ color: '#D4483B' }}>
-              {String(errors.dutyStartTime.message)}
-            </p>
-          )}
-        </div>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
+          Duty Schedule
+        </h2>
+        <p className="text-gray-600 dark:text-gray-300 mb-6">
+          Please set your regular and night duty timings.
+        </p>
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium" style={{ color: '#003594' }}>
-            Regular Duty End Time
-          </label>
-          <input
-            type="text"
-            {...register("dutyEndTime")}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="HH:MM"
-            style={{ borderColor: '#003594' }}
-          />
-          {errors.dutyEndTime && (
-            <p className="mt-1 text-sm" style={{ color: '#D4483B' }}>
-              {String(errors.dutyEndTime.message)}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium" style={{ color: '#003594' }}>
-            Night Duty Start Time
-          </label>
-          <input
-            type="text"
-            {...register("nightDutyStartTime")}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="HH:MM"
-            style={{ borderColor: '#003594' }}
-          />
-          {errors.nightDutyStartTime && (
-            <p className="mt-1 text-sm" style={{ color: '#D4483B' }}>
-              {String(errors.nightDutyStartTime.message)}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium" style={{ color: '#003594' }}>
-            Night Duty End Time
-          </label>
-          <input
-            type="text"
-            {...register("nightDutyEndTime")}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="HH:MM"
-            style={{ borderColor: '#003594' }}
-          />
-          {errors.nightDutyEndTime && (
-            <p className="mt-1 text-sm" style={{ color: '#D4483B' }}>
-              {String(errors.nightDutyEndTime.message)}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium" style={{ color: '#003594' }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Regular Duty Start Time
+            </label>
             <input
-              type="checkbox"
-              checked={morningShiftEnabled}
-              onChange={e => setMorningShiftEnabled(e.target.checked)}
-              className="mr-2"
-              style={{ accentColor: '#003594' }}
+              type="text"
+              {...register("dutyStartTime")}
+              className="input-field"
+              placeholder="HH:MM"
             />
-            Enable Morning Shift
-          </label>
+            {errors.dutyStartTime && (
+              <p className="mt-1 text-sm text-[#D4483B]">
+                {String(errors.dutyStartTime.message)}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Regular Duty End Time
+            </label>
+            <input
+              type="text"
+              {...register("dutyEndTime")}
+              className="input-field"
+              placeholder="HH:MM"
+            />
+            {errors.dutyEndTime && (
+              <p className="mt-1 text-sm text-[#D4483B]">
+                {String(errors.dutyEndTime.message)}
+              </p>
+            )}
+          </div>
         </div>
 
-        {morningShiftEnabled && (
-          <>
-            <div>
-              <label className="block text-sm font-medium" style={{ color: '#003594' }}>
-                Morning Shift Start Time
-              </label>
-              <input
-                type="text"
-                {...register("morningShiftStartTime")}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                placeholder="HH:MM"
-                style={{ borderColor: '#003594' }}
-              />
-              {errors.morningShiftStartTime && (
-                <p className="mt-1 text-sm" style={{ color: '#D4483B' }}>
-                  {String(errors.morningShiftStartTime.message)}
-                </p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium" style={{ color: '#003594' }}>
-                Morning Shift End Time
-              </label>
-              <input
-                type="text"
-                {...register("morningShiftEndTime")}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                placeholder="HH:MM"
-                style={{ borderColor: '#003594' }}
-              />
-              {errors.morningShiftEndTime && (
-                <p className="mt-1 text-sm" style={{ color: '#D4483B' }}>
-                  {String(errors.morningShiftEndTime.message)}
-                </p>
-              )}
-            </div>
-          </>
-        )}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Night Duty Start Time
+            </label>
+            <input
+              type="text"
+              {...register("nightDutyStartTime")}
+              className="input-field"
+              placeholder="HH:MM"
+            />
+            {errors.nightDutyStartTime && (
+              <p className="mt-1 text-sm text-[#D4483B]">
+                {String(errors.nightDutyStartTime.message)}
+              </p>
+            )}
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium" style={{ color: '#003594' }}>
-            Regular Off Day
-          </label>
-          <select
-            {...register("regularOffDay")}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            style={{ borderColor: '#003594' }}
-          >
-            <option value="Sunday">Sunday</option>
-            <option value="Monday">Monday</option>
-            <option value="Tuesday">Tuesday</option>
-            <option value="Wednesday">Wednesday</option>
-            <option value="Thursday">Thursday</option>
-            <option value="Friday">Friday</option>
-            <option value="Saturday">Saturday</option>
-          </select>
-          {errors.regularOffDay && (
-            <p className="mt-1 text-sm" style={{ color: '#D4483B' }}>
-              {String(errors.regularOffDay.message)}
-            </p>
-          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Night Duty End Time
+            </label>
+            <input
+              type="text"
+              {...register("nightDutyEndTime")}
+              className="input-field"
+              placeholder="HH:MM"
+            />
+            {errors.nightDutyEndTime && (
+              <p className="mt-1 text-sm text-[#D4483B]">
+                {String(errors.nightDutyEndTime.message)}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="flex justify-between py-4">
+      <div className="pt-4">
+        <label className="flex items-center space-x-2 text-gray-700 dark:text-gray-300">
+          <input
+            type="checkbox"
+            checked={morningShiftEnabled}
+            onChange={e => setMorningShiftEnabled(e.target.checked)}
+            className="w-4 h-4 text-[#003594] border-gray-300 rounded focus:ring-[#003594]"
+          />
+          <span className="text-sm font-medium">Enable Morning Shift</span>
+        </label>
+      </div>
+
+      {morningShiftEnabled && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Morning Shift Start Time
+            </label>
+            <input
+              type="text"
+              {...register("morningShiftStartTime")}
+              className="input-field"
+              placeholder="HH:MM"
+            />
+            {errors.morningShiftStartTime && (
+              <p className="mt-1 text-sm text-[#D4483B]">
+                {String(errors.morningShiftStartTime.message)}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Morning Shift End Time
+            </label>
+            <input
+              type="text"
+              {...register("morningShiftEndTime")}
+              className="input-field"
+              placeholder="HH:MM"
+            />
+            {errors.morningShiftEndTime && (
+              <p className="mt-1 text-sm text-[#D4483B]">
+                {String(errors.morningShiftEndTime.message)}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="pt-4">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Regular Off Day
+        </label>
+        <select
+          {...register("regularOffDay")}
+          className="input-field"
+        >
+          <option value="Sunday">Sunday</option>
+          <option value="Monday">Monday</option>
+          <option value="Tuesday">Tuesday</option>
+          <option value="Wednesday">Wednesday</option>
+          <option value="Thursday">Thursday</option>
+          <option value="Friday">Friday</option>
+          <option value="Saturday">Saturday</option>
+        </select>
+        {errors.regularOffDay && (
+          <p className="mt-1 text-sm text-[#D4483B]">
+            {String(errors.regularOffDay.message)}
+          </p>
+        )}
+      </div>
+
+      <div className="flex justify-between pt-6">
         <button
           type="button"
           onClick={onPrevious}
-          className="px-4 py-2 rounded-md"
-          style={{ backgroundColor: '#D4483B', color: 'white' }}
+          className="btn-secondary"
         >
           Previous
         </button>
-
         <button
           type="submit"
-          className="px-4 py-2 rounded-md"
-          style={{ backgroundColor: '#003594', color: 'white' }}
+          className="btn-primary"
         >
-          Next
+          Next Step
         </button>
       </div>
     </form>
