@@ -30,13 +30,6 @@ function calculateDuration(startStr: string, endStr: string): number {
   return end.diff(start, "minute") / 60;
 }
 
-function calculateTwoHoursBefore(time: string): string {
-  const [hours, minutes] = time.split(":").map(Number);
-  const date = dayjs().hour(hours).minute(minutes);
-  const twoHoursBefore = date.subtract(2, "hour");
-  return twoHoursBefore.format("HH:mm");
-}
-
 function getOvertimeIntervals(
   inTime: string,
   outTime: string,
@@ -125,8 +118,13 @@ function getOvertimeIntervals(
   return result;
 }
 
+interface AttendanceRecord {
+  inTime: string;
+  outTime: string;
+}
+
 const CalculateOvertime = async (
-  attendanceData: any[],
+  attendanceData: AttendanceRecord[],
   nightDutyDays: number[] = [],
   regularStart: string,
   regularEnd: string,

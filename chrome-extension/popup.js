@@ -119,15 +119,13 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    // Log the data being sent
-    console.log('Sending data to overtime calculator:', capturedData);
 
     // Encode the data for URL
     const encodedData = encodeURIComponent(JSON.stringify(capturedData));
     
     // Redirect to the overtime calculator app with the data
     chrome.tabs.create({ 
-      url: `http://localhost:3000?extensionData=${encodedData}`
+      url: `https://overtime-app-nac.vercel.app?extensionData=${encodedData}`
     });
   });
 }); 
