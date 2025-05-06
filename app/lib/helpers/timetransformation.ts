@@ -1,13 +1,3 @@
-interface RawAttendanceRecord {
-  inTime: string | number | null;
-  outTime: string | number | null;
-}
-
-interface ProcessedAttendanceRecord {
-  inTime: string;
-  outTime: string;
-}
-
 const convertDecimalToRoundedTime = (decimalTime: number): string => {
   if (decimalTime === null || decimalTime === undefined) return "--"; // Handle missing values
 
@@ -26,7 +16,7 @@ const convertDecimalToRoundedTime = (decimalTime: number): string => {
   return `${hours.toString().padStart(2, "0")}:00`;
 };
 
-const processRawTime = (attendanceRecords: RawAttendanceRecord[]): ProcessedAttendanceRecord[] => {
+const processRawTime = (attendanceRecords: any[]): any[] => {
   if (!attendanceRecords.length || !Array.isArray(attendanceRecords)) {
     return [];
   }
