@@ -3,11 +3,6 @@ import { AttendanceRecord } from "@/app/types/InputFormType";
 import { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 
-interface ExtensionRecord {
-  inTime: string | number | null;
-  outTime: string | number | null;
-}
-
 const convertExcelTimeToHHMM = (value: string | number | undefined | null): string => {
   if (!value) return "";
   
@@ -45,7 +40,7 @@ const Step3 = () => {
       try {
         const parsedData = JSON.parse(extensionData);
         
-        const formattedData = parsedData.map((record: ExtensionRecord) => ({
+        const formattedData = parsedData.map((record: any) => ({
           inTime: record.inTime ? convertExcelTimeToHHMM(record.inTime) : "",
           outTime: record.outTime ? convertExcelTimeToHHMM(record.outTime) : "",
         }));
