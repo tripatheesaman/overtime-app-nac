@@ -143,85 +143,128 @@ const Step4 = () => {
   };
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md max-w-md mx-auto">
-      <h2 className="text-xl font-bold mb-4 text-center">
-        Select Night Duty Days
-      </h2>
-
-      <div className="grid grid-cols-7 gap-2 p-4 border rounded-md bg-gray-100 mb-6">
-        {[...Array(32)].map((_, index) => {
-          const day = index + 1;
-          const isSelected = selectedDays.includes(day);
-          return (
-            <button
-              key={day}
-              disabled={isLoading}
-              className={`w-10 h-10 flex items-center justify-center rounded-md transition ${
-                isSelected
-                  ? "bg-blue-500 text-white"
-                  : "bg-white text-black border hover:bg-gray-200"
-              }`}
-              onClick={() => handleDayClick(day)}
-            >
-              {day}
-            </button>
-          );
-        })}
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
+          Select Duty Days
+        </h2>
+        <p className="text-gray-600 dark:text-gray-300 mb-6">
+          Choose the days for night duty and morning shift.
+        </p>
       </div>
 
-      <h2 className="text-xl font-bold mb-4 text-center">
-        Select Morning Shift Days
-      </h2>
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+            Night Duty Days
+          </h3>
+          <div className="grid grid-cols-7 gap-2 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            {[...Array(32)].map((_, index) => {
+              const day = index + 1;
+              const isSelected = selectedDays.includes(day);
+              return (
+                <button
+                  key={day}
+                  disabled={isLoading}
+                  className={`w-10 h-10 flex items-center justify-center rounded-md transition-all duration-200 ${
+                    isSelected
+                      ? "bg-[#003594] text-white shadow-md"
+                      : "bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600"
+                  }`}
+                  onClick={() => handleDayClick(day)}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-      <div className="grid grid-cols-7 gap-2 p-4 border rounded-md bg-gray-100 mb-6">
-        {[...Array(32)].map((_, index) => {
-          const day = index + 1;
-          const isSelected = selectedMorningDays.includes(day);
-          return (
-            <button
-              key={day}
-              disabled={isLoading}
-              className={`w-10 h-10 flex items-center justify-center rounded-md transition ${
-                isSelected
-                  ? "bg-blue-500 text-white"
-                  : "bg-white text-black border hover:bg-gray-200"
-              }`}
-              onClick={() => handleMorningDayClick(day)}
-            >
-              {day}
-            </button>
-          );
-        })}
+        <div>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+            Morning Shift Days
+          </h3>
+          <div className="grid grid-cols-7 gap-2 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            {[...Array(32)].map((_, index) => {
+              const day = index + 1;
+              const isSelected = selectedMorningDays.includes(day);
+              return (
+                <button
+                  key={day}
+                  disabled={isLoading}
+                  className={`w-10 h-10 flex items-center justify-center rounded-md transition-all duration-200 ${
+                    isSelected
+                      ? "bg-[#D4483B] text-white shadow-md"
+                      : "bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600"
+                  }`}
+                  onClick={() => handleMorningDayClick(day)}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {responseMessage && (
         <div
-          className={`p-4 mb-4 rounded-md ${
-            isError ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
+          className={`p-4 rounded-lg ${
+            isError
+              ? "bg-red-50 dark:bg-red-900/50 text-red-700 dark:text-red-200"
+              : "bg-green-50 dark:bg-green-900/50 text-green-700 dark:text-green-200"
           }`}
         >
-          {responseMessage}
+          <div className="flex items-center">
+            {isError ? (
+              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            )}
+            {responseMessage}
+          </div>
         </div>
       )}
 
-      <div className="flex justify-between mt-4">
+      <div className="flex justify-between pt-6">
         <button
           onClick={onPrevious}
-          className="bg-gray-500 text-white px-4 py-2 rounded-md"
+          className="btn-secondary"
         >
           Previous
         </button>
-
         <button
           onClick={handleSubmit}
           disabled={isLoading}
-          className={`px-4 py-2 rounded-md ${
+          className={`${
             isLoading
               ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-              : "bg-blue-500 text-white"
+              : "btn-primary"
           }`}
         >
-          {isLoading ? "Processing..." : "Submit"}
+          {isLoading ? (
+            <div className="flex items-center space-x-2">
+              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>Processing...</span>
+            </div>
+          ) : (
+            "Submit"
+          )}
         </button>
       </div>
     </div>

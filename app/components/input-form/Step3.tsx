@@ -106,59 +106,125 @@ const Step3 = () => {
   };
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md max-w-md mx-auto">
-      <h2 className="text-xl font-bold mb-4 text-center">
-        {hasExtensionData ? "Captured Attendance Data" : "Upload Attendance File"}
-      </h2>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
+          {hasExtensionData ? "Captured Attendance Data" : "Upload Attendance File"}
+        </h2>
+        <p className="text-gray-600 dark:text-gray-300 mb-6">
+          {hasExtensionData 
+            ? "Review the attendance data captured from the extension."
+            : "Upload your Excel file containing attendance records."}
+        </p>
+      </div>
 
       {!hasExtensionData && (
-        <input
-          type="file"
-          accept=".xlsx, .xls"
-          onChange={handleFileUpload}
-          className="mb-4"
-        />
+        <div className="flex flex-col items-center justify-center w-full">
+          <label
+            htmlFor="file-upload"
+            className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500"
+          >
+            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+              <svg
+                className="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400"
+                aria-hidden="true"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 20 16"
+              >
+                <path
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"
+                />
+              </svg>
+              <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                <span className="font-semibold">Click to upload</span> or drag and drop
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">XLSX or XLS</p>
+            </div>
+            <input
+              id="file-upload"
+              type="file"
+              accept=".xlsx, .xls"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+          </label>
+        </div>
       )}
 
       {excelData.length > 0 && (
-        <div className="mt-4 p-2 border rounded">
-          <h3 className="font-medium">Upload Times:</h3>
-          <div className="mt-2">
-            {excelData.map((record, index) => (
-              <div key={index} className="text-sm">
-                Row {index + 1}: In: {record.inTime || 'Empty'}, Out: {record.outTime || 'Empty'}
-              </div>
-            ))}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="p-4">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+              Attendance Records
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Row
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      In Time
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Out Time
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {excelData.map((record, index) => (
+                    <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        {index + 1}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        {record.inTime || 'Empty'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        {record.outTime || 'Empty'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
 
       {isLoading && (
-        <div className="text-center mt-2">
-          <p className="text-blue-500">Uploading... Please wait</p>
+        <div className="flex items-center justify-center space-x-2 text-[#003594]">
+          <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span>Processing...</span>
         </div>
       )}
 
-      <div className="flex justify-between mt-4">
+      <div className="flex justify-between pt-6">
         <button
           onClick={onPrevious}
-          className="bg-gray-500 text-white px-4 py-2 rounded-md"
+          className="btn-secondary"
         >
           Previous
         </button>
-
         <button
           onClick={handleSubmit}
           disabled={excelData.length === 0 || isLoading}
-          className={`px-4 py-2 rounded-md ${
-            isLoading
+          className={`${
+            isLoading || excelData.length === 0
               ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-              : excelData.length > 0
-              ? "bg-blue-500 text-white"
-              : "bg-gray-300 text-gray-500"
+              : "btn-primary"
           }`}
         >
-          {isLoading ? "Uploading..." : "Next"}
+          {isLoading ? "Processing..." : "Next Step"}
         </button>
       </div>
     </div>
