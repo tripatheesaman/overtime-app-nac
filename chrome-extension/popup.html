@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Overtime Calculator Helper</title>
+  <style>
+    body {
+      width: 400px;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .button {
+      padding: 10px;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .button:hover {
+      opacity: 0.9;
+    }
+    .button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    .data-preview {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #003594;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 4px;
+    }
+    .edit-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 5px;
+    }
+    .edit-row input {
+      flex: 1;
+      padding: 5px;
+      border: 1px solid #003594;
+      border-radius: 4px;
+    }
+    .edit-row input:focus {
+      outline: none;
+      border-color: #D4483B;
+    }
+    h2 {
+      color: #003594;
+      margin-bottom: 15px;
+    }
+    h3 {
+      color: #003594;
+      margin-bottom: 10px;
+    }
+    #captureBtn {
+      background-color: #003594;
+    }
+    #submitBtn {
+      background-color: #D4483B;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Overtime Calculator Helper</h2>
+    <button id="captureBtn" class="button">Capture Table Data</button>
+    <div id="dataPreview" class="data-preview" style="display: none;">
+      <h3>Captured Data</h3>
+      <div id="editContainer"></div>
+    </div>
+    <button id="submitBtn" class="button" style="display: none;">Submit to Overtime Calculator</button>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html> 

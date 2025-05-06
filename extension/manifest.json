@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Overtime Data Capture",
+  "version": "1.0",
+  "description": "Capture overtime data from web tables and send to Overtime App",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "../public/logo.png",
+      "48": "../public/logo.png",
+      "128": "../public/logo.png"
+    }
+  },
+  "icons": {
+    "16": "../public/logo.png",
+    "48": "../public/logo.png",
+    "128": "../public/logo.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
+} 
