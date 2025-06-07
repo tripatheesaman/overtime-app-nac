@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import getCurrentMonthDetails from "@/app/services/DayDetails";
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -10,6 +11,21 @@ export async function GET(req: NextRequest) {
 
   try {
     const parsedData = JSON.parse(data);
+    
+    if (parsedData.action === 'getCurrentMonthDetails') {
+      const monthDetails = await getCurrentMonthDetails();
+      if ('message' in monthDetails && 'status' in monthDetails) {
+        return NextResponse.json({ 
+          success: false, 
+          error: monthDetails.message 
+        }, { status: monthDetails.status });
+      }
+      return NextResponse.json({ 
+        success: true, 
+        data: monthDetails 
+      });
+    }
+
     return NextResponse.json({ success: true, data: parsedData });
   } catch (error) {
     return NextResponse.json(
