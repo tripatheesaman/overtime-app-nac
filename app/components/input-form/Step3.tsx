@@ -1,5 +1,4 @@
 import { useFormContext } from "@/app/context/FormContext";
-import { AttendanceRecord } from "@/app/types/InputFormType";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
