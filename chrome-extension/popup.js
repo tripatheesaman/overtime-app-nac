@@ -45,10 +45,10 @@ document.addEventListener('DOMContentLoaded', function() {
       remarks.push('CHD');
     }
     if (dayOfWeekName === selectedOffDay) {
-      remarks.push('Off');
+      remarks.push('OFF');
     }
     
-    return remarks.join(', ') || 'Working';
+    return remarks.join(', ') || '';
   }
 
   // Function to validate time format
