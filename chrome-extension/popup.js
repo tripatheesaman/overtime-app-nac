@@ -1,3 +1,5 @@
+import config from './config.js';
+
 document.addEventListener('DOMContentLoaded', function() {
   const setupForm = document.getElementById('setupForm');
   const setupBtn = document.getElementById('setupBtn');
@@ -15,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Function to fetch day details
   async function fetchDayDetails() {
     try {
-      const response = await fetch('http://localhost:3000/api/extension-data?data=' + encodeURIComponent(JSON.stringify({ action: 'getCurrentMonthDetails' })));
+      const response = await fetch(`${config.BASE_URL}/api/extension-data?data=` + encodeURIComponent(JSON.stringify({ action: 'getCurrentMonthDetails' })));
       const data = await response.json();
       if (data.success && data.data) {
         return data.data;
@@ -43,10 +45,10 @@ document.addEventListener('DOMContentLoaded', function() {
       remarks.push('CHD');
     }
     if (dayOfWeekName === selectedOffDay) {
-      remarks.push('Off');
+      remarks.push('OFF');
     }
     
-    return remarks.join(', ') || 'Working';
+    return remarks.join(', ') || '';
   }
 
   // Function to validate time format
@@ -318,13 +320,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Save updated data
     saveData();
 
-
     // Encode the data for URL
     const encodedData = encodeURIComponent(JSON.stringify(dataToSend));
     
     // Redirect to the overtime calculator app with the data
     chrome.tabs.create({ 
-      url: `http://localhost:3000?extensionData=${encodedData}`
+      url: `${config.BASE_URL}?extensionData=${encodedData}`
     });
   });
 
