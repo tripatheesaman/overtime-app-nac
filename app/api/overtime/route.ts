@@ -73,7 +73,12 @@ export const POST = async (req: NextRequest) => {
   }
   let processedAttendanceData;
   try {
-    processedAttendanceData = processRawTime(data.inOutTimes);
+    const recordsWithShiftInfo = data.inOutTimes.map((record, index) => ({
+      ...record,
+      isMorningShift: data.morningShiftDays?.includes(index + 1) || false
+    }));
+    
+    processedAttendanceData = processRawTime(recordsWithShiftInfo, data.dutyStartTime, data.dutyEndTime);
     if (!processedAttendanceData || processedAttendanceData.length === 0) {
       throw new Error("Invalid data after processing!");
     }

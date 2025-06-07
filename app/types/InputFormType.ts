@@ -1,6 +1,7 @@
 export interface AttendanceRecord {
   inTime: string;
   outTime: string;
+  isMorningShift?: boolean;
 }
 
 export type dayOfWeek =
