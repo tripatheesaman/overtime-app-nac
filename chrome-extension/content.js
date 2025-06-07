@@ -50,6 +50,14 @@ function extractTimeData() {
     return rowCount > max.rows.length ? table : max;
   }, tables[0]);
 
+  // Find the header row to locate Emp ID, Name, and Designation columns
+  const headerRow = mainTable.querySelector('tr');
+  const headers = Array.from(headerRow.querySelectorAll('th, td')).map(cell => cell.textContent.trim());
+  
+  const empIdIndex = headers.findIndex(h => h.toLowerCase().includes('emp id'));
+  const nameIndex = headers.findIndex(h => h.toLowerCase().includes('name'));
+  const designationIndex = headers.findIndex(h => h.toLowerCase().includes('designation'));
+  
   const timeColumns = findTimeColumns(mainTable);
   if (timeColumns.length !== 2) {
     return null;
@@ -57,6 +65,16 @@ function extractTimeData() {
 
   const data = [];
   const rows = mainTable.querySelectorAll('tr');
+  
+  // Get the first row's data for Emp ID, Name, and Designation
+  const firstRow = rows[1]; // Skip header row
+  const firstRowCells = firstRow.querySelectorAll('td');
+  
+  const employeeData = {
+    staffId: empIdIndex !== -1 ? firstRowCells[empIdIndex].textContent.trim() : '',
+    name: nameIndex !== -1 ? firstRowCells[nameIndex].textContent.trim() : '',
+    designation: designationIndex !== -1 ? firstRowCells[designationIndex].textContent.trim() : ''
+  };
   
   rows.forEach(row => {
     const cells = row.querySelectorAll('td');
@@ -69,7 +87,10 @@ function extractTimeData() {
     }
   });
 
-  return data;
+  return {
+    attendanceData: data,
+    employeeData: employeeData
+  };
 }
 
 // Listen for messages from the popup

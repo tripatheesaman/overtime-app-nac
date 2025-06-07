@@ -23,15 +23,6 @@ const schema = z
     morningShiftEnabled: z.boolean(),
     morningShiftStartTime: z.string().optional(),
     morningShiftEndTime: z.string().optional(),
-    regularOffDay: z.enum([
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-    ]),
   })
   .superRefine((data, ctx) => {
     if (data.morningShiftEnabled) {
@@ -70,7 +61,6 @@ const Step2 = () => {
       morningShiftEnabled: !!formData.morningShiftStartTime,
       morningShiftStartTime: formData.morningShiftStartTime || "06:00",
       morningShiftEndTime: formData.morningShiftEndTime || "14:00",
-      regularOffDay: formData.regularOffDay,
     },
     resolver: zodResolver(schema),
   });
@@ -222,29 +212,6 @@ const Step2 = () => {
           </div>
         </div>
       )}
-
-      <div className="pt-4">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Regular Off Day
-        </label>
-        <select
-          {...register("regularOffDay")}
-          className="input-field"
-        >
-          <option value="Sunday">Sunday</option>
-          <option value="Monday">Monday</option>
-          <option value="Tuesday">Tuesday</option>
-          <option value="Wednesday">Wednesday</option>
-          <option value="Thursday">Thursday</option>
-          <option value="Friday">Friday</option>
-          <option value="Saturday">Saturday</option>
-        </select>
-        {errors.regularOffDay && (
-          <p className="mt-1 text-sm text-[#D4483B]">
-            {String(errors.regularOffDay.message)}
-          </p>
-        )}
-      </div>
 
       <div className="flex justify-between pt-6">
         <button
