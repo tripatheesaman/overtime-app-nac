@@ -1,4 +1,3 @@
-import { Step1 } from "./Step1";
 import { useFormContext } from "@/app/context/FormContext";
 import Step2 from "./Step2";
 import Step3 from "./Step3";
@@ -21,7 +20,7 @@ const FullStepForm = () => {
       <div className="w-full max-w-2xl">
         <div className="flex justify-center mb-8">
           <div className="flex items-center space-x-4">
-            {[1, 2, 3, 4].map((stepNumber) => (
+            {[1, 2].map((stepNumber) => (
               <div key={stepNumber} className="flex items-center">
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
@@ -34,7 +33,7 @@ const FullStepForm = () => {
                 >
                   {stepNumber}
                 </div>
-                {stepNumber < 4 && (
+                {stepNumber < 2 && (
                   <div
                     className={`w-12 h-0.5 ${
                       step > stepNumber ? "bg-[#003594]" : "bg-gray-200 dark:bg-gray-700"
@@ -46,11 +45,10 @@ const FullStepForm = () => {
           </div>
         </div>
 
-        <div className="card">
-          {step === 1 && <Step1 />}
-          {step === 2 && <Step2 />}
-          {step === 3 && <Step3 />}
-          {step === 4 && <Step4 />}
+        <div>
+        {step === 2 && <Step2 />}
+        {step === 3 && <Step3 />}
+        {step === 4 && <Step4 />}
         </div>
       </div>
     </div>
