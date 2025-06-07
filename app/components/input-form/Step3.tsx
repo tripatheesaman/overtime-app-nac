@@ -10,16 +10,22 @@ interface ExtensionRecord {
 const convertExcelTimeToHHMM = (value: string | number | undefined | null): string => {
   if (!value) return "";
   
-  // If it's already a number (Excel time value), return as is
+  // If it's already a number (Excel time value), convert to HH:MM
   if (typeof value === "number") {
-    return value.toString();
+    const totalMinutes = value * 24 * 60; // Convert fraction to total minutes
+    const hours = Math.floor(totalMinutes / 60); // Extract hours
+    const minutes = Math.round(totalMinutes % 60); // Extract minutes
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
   }
   
   // If it's a string in HH:MM format, convert to Excel time
   if (typeof value === "string") {
     // Remove any leading/trailing spaces and quotes
     const cleanValue = value.trim().replace(/^['"]|['"]$/g, "");
-    if (/^([01]\d|2[0-3]):([0-5]\d)$/.test(cleanValue)) {
+    
+    // Handle both HH:MM and H:MM formats
+    const timePattern = /^([0-9]|0[0-9]|1[0-9]|2[0-3]):([0-5][0-9])$/;
+    if (timePattern.test(cleanValue)) {
       const [hours, minutes] = cleanValue.split(":").map(Number);
       const excelTime = (hours + minutes / 60) / 24;
       return excelTime.toString();
@@ -30,7 +36,7 @@ const convertExcelTimeToHHMM = (value: string | number | undefined | null): stri
 };
 
 const Step3 = () => {
-  const { setStep, setFormData } = useFormContext();
+  const { setStep, setFormData, formData } = useFormContext();
   const router = useRouter();
 
   useEffect(() => {
@@ -52,20 +58,20 @@ const Step3 = () => {
             outTime: record.outTime ? convertExcelTimeToHHMM(record.outTime) : "",
           }));
           
-          // Set all form data at once
+          // Set all form data at once, preserving existing duty times
           setFormData({ 
             inOutTimes: formattedData,
             regularOffDay: parsedData.regularOffDay || "Saturday",
             name: parsedData.name || "",
             staffId: parsedData.staffId || "",
             designation: parsedData.designation || "",
-            // Set default values for other required fields
-            dutyStartTime: "09:00",
-            dutyEndTime: "17:00",
-            nightDutyStartTime: "22:00",
-            nightDutyEndTime: "06:00",
-            morningShiftStartTime: "06:00",
-            morningShiftEndTime: "14:00",
+            // Use existing duty times from form data
+            dutyStartTime: formData.dutyStartTime,
+            dutyEndTime: formData.dutyEndTime,
+            nightDutyStartTime: formData.nightDutyStartTime,
+            nightDutyEndTime: formData.nightDutyEndTime,
+            morningShiftStartTime: formData.morningShiftStartTime,
+            morningShiftEndTime: formData.morningShiftEndTime,
             nightDutyDays: [],
             morningShiftDays: []
           });
@@ -82,9 +88,9 @@ const Step3 = () => {
         console.error('Error parsing extension data:', error);
       }
     }
-  }, [setFormData, router, setStep]);
+  }, [setFormData, router, setStep, formData]);
 
-  return null; // Don't render anything since we're auto-proceeding
+  return null;
 };
 
 export default Step3;

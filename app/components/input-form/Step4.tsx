@@ -6,6 +6,14 @@ import { useState } from "react";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 
+const formatTotalHours = (hours: number): string => {
+  if (hours === 0) return "";
+  const totalMinutes = Math.round(hours * 60);
+  const formattedHours = Math.floor(totalMinutes / 60);
+  const formattedMinutes = totalMinutes % 60;
+  return `${formattedHours.toString().padStart(2, "0")}:${formattedMinutes.toString().padStart(2, "0")}`;
+};
+
 const Step4 = () => {
   const { formData, setFormData, setStep } = useFormContext();
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -32,12 +40,6 @@ const Step4 = () => {
 
   const onPrevious = () => {
     setStep(3);
-  };
-
-  const formatTotalHours = (hours: number) => {
-    if (hours === 0) return;
-    const formattedHours = `${hours}:00`;
-    return formattedHours;
   };
 
   const handleSubmit = async () => {
@@ -129,11 +131,11 @@ const Step4 = () => {
     sheet.getCell("A6").value = `Staff No: :${formData.staffId}`;
     sheet.getCell("L6").value = formData.regularOffDay;
 
-    // Set total values
-    sheet.getCell("H43").value = totalRegularOT.toFixed(2);
-    sheet.getCell("D43").value = totalHolidayOT.toFixed(2);
-    sheet.getCell("F44").value = (totalRegularOT + totalHolidayOT).toFixed(2);
-    sheet.getCell("K43").value = totalNightHours.toFixed(2);
+    // Set total values in HH:MM format
+    sheet.getCell("H43").value = formatTotalHours(totalRegularOT);
+    sheet.getCell("D43").value = formatTotalHours(totalHolidayOT);
+    sheet.getCell("F44").value = formatTotalHours(totalRegularOT + totalHolidayOT);
+    sheet.getCell("K43").value = formatTotalHours(totalNightHours);
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
