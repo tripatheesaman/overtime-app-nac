@@ -54,13 +54,13 @@ const Step2 = () => {
     formState: { errors },
   } = useForm<FormValues>({
     defaultValues: {
-      dutyStartTime: formData.dutyStartTime,
-      dutyEndTime: formData.dutyEndTime,
+      dutyStartTime: formData.dutyStartTime || "10:00",
+      dutyEndTime: formData.dutyEndTime || "17:00",
       nightDutyStartTime: formData.nightDutyStartTime || "17:00",
-      nightDutyEndTime: formData.nightDutyEndTime || "23:00",
+      nightDutyEndTime: formData.nightDutyEndTime || "00:00",
       morningShiftEnabled: !!formData.morningShiftStartTime,
-      morningShiftStartTime: formData.morningShiftStartTime || "06:00",
-      morningShiftEndTime: formData.morningShiftEndTime || "14:00",
+      morningShiftStartTime: formData.morningShiftStartTime || "05:30",
+      morningShiftEndTime: formData.morningShiftEndTime || "12:30",
     },
     resolver: zodResolver(schema),
   });
