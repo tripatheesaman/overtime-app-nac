@@ -4,22 +4,27 @@
   <title>Overtime Calculator Helper</title>
   <style>
     body {
-      width: 400px;
+      width: 600px;
+      height: 600px;
       padding: 20px;
       font-family: Arial, sans-serif;
+      margin: 0;
+      overflow: hidden;
     }
     .container {
       display: flex;
       flex-direction: column;
       gap: 15px;
+      height: 100%;
     }
     .button {
-      padding: 10px;
+      padding: 8px 15px;
       color: white;
       border: none;
       border-radius: 4px;
       cursor: pointer;
       font-weight: 500;
+      font-size: 14px;
     }
     .button:hover {
       opacity: 0.9;
@@ -28,55 +33,161 @@
       background-color: #cccccc;
       cursor: not-allowed;
     }
-    .data-preview {
-      max-height: 300px;
-      overflow-y: auto;
-      border: 1px solid #003594;
-      padding: 10px;
-      margin-top: 10px;
-      border-radius: 4px;
+    .modal {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: white;
+      z-index: 1000;
+      overflow: hidden;
     }
-    .edit-row {
+    .modal-content {
+      position: relative;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .header-buttons {
       display: flex;
       gap: 10px;
-      margin-bottom: 5px;
     }
-    .edit-row input {
+    .table-container {
       flex: 1;
-      padding: 5px;
-      border: 1px solid #003594;
-      border-radius: 4px;
+      overflow-y: auto;
+      margin-right: -20px;
+      padding-right: 20px;
     }
-    .edit-row input:focus {
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background-color: #f5f5f5;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+    input:focus, select:focus {
       outline: none;
-      border-color: #D4483B;
+      border-color: #003594;
+    }
+    input.invalid {
+      border: 2px solid #D4483B;
+      background-color: #fff0f0;
+      animation: shake 0.5s;
+      animation-iteration-count: 1;
+    }
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      50% { transform: translateX(5px); }
+      75% { transform: translateX(-5px); }
+      100% { transform: translateX(0); }
     }
     h2 {
       color: #003594;
-      margin-bottom: 15px;
+      margin: 0;
     }
     h3 {
       color: #003594;
-      margin-bottom: 10px;
+      margin: 0;
     }
-    #captureBtn {
-      background-color: #003594;
+    .setup-form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-bottom: 20px;
     }
-    #submitBtn {
-      background-color: #D4483B;
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .form-group label {
+      font-weight: 500;
+      color: #333;
+    }
+    .error-message {
+      color: #D4483B;
+      font-size: 14px;
+      margin-top: 5px;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>Overtime Calculator Helper</h2>
-    <button id="captureBtn" class="button">Capture Table Data</button>
-    <div id="dataPreview" class="data-preview" style="display: none;">
-      <h3>Captured Data</h3>
-      <div id="editContainer"></div>
+    
+    <div id="setupForm" class="setup-form">
+      <div class="form-group">
+        <label for="offDay">Regular Off Day</label>
+        <select id="offDay" required>
+          <option value="">Select Off Day</option>
+          <option value="Sunday">Sunday</option>
+          <option value="Monday">Monday</option>
+          <option value="Tuesday">Tuesday</option>
+          <option value="Wednesday">Wednesday</option>
+          <option value="Thursday">Thursday</option>
+          <option value="Friday">Friday</option>
+          <option value="Saturday">Saturday</option>
+        </select>
+      </div>
+      <button id="setupBtn" class="button" style="background-color: #003594;">Continue</button>
     </div>
-    <button id="submitBtn" class="button" style="display: none;">Submit to Overtime Calculator</button>
+
+    <div id="captureSection" style="display: none;">
+    </div>
   </div>
+
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Edit Attendance Data</h3>
+        <div class="header-buttons">
+          <button id="resetBtn" class="button" style="background-color: #666;">Reset</button>
+          <button id="submitBtn" class="button" style="background-color: #D4483B;">Submit</button>
+        </div>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>SN</th>
+              <th>In Time</th>
+              <th>Out Time</th>
+              <th>Remarks</th>
+            </tr>
+          </thead>
+          <tbody id="editTableBody">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <script src="popup.js"></script>
 </body>
 </html> 
