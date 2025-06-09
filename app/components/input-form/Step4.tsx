@@ -101,7 +101,8 @@ const Step4 = () => {
           await exportOvertimeToExcel(response.overtimeData);
         }
       }
-    } catch (error) {
+    } catch (err) {
+      console.error("Failed to process overtime data:", err);
       setIsError(true);
       setResponseMessage("Failed to process overtime data. Please try again.");
     }
