@@ -46,10 +46,10 @@ const convertDecimalToRoundedTime = (decimalTime: number, isInTime: boolean = tr
   } else {
     // If outside threshold, round to nearest hour
     if (minutes < threshold) {
-      minutes = 0; // Round down
-    } else {
-      minutes = 0; // Reset minutes
-      hours += 1; // Round up to next hour
+    minutes = 0; // Round down
+  } else {
+    minutes = 0; // Reset minutes
+    hours += 1; // Round up to next hour
     }
   }
 
@@ -64,12 +64,12 @@ const processRawTime = (attendanceRecords: AttendanceRecord[], dutyStartTime: st
   return attendanceRecords.map((record) => {
     const isMorningShift = record.isMorningShift || false; // Get morning shift status from record
     return {
-      inTime: record.inTime
+    inTime: record.inTime
         ? convertDecimalToRoundedTime(Number(record.inTime), true, dutyStartTime, isMorningShift)
-        : "NA",
-      outTime: record.outTime
+      : "NA",
+    outTime: record.outTime
         ? convertDecimalToRoundedTime(Number(record.outTime), false, dutyEndTime, isMorningShift)
-        : "NA",
+      : "NA",
     };
   });
 };
