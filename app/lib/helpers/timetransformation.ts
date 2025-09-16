@@ -11,19 +11,13 @@ const convertDecimalToRoundedTime = (decimalTime: number, isInTime: boolean = tr
   let hours = Math.floor(totalMinutes / 60); // Extract hours
   let minutes = Math.round(totalMinutes % 60); // Extract minutes
 
-  // For morning shift with specific conditions
-  if (isMorningShift) {
+  // For morning shift in-time: if before 5:15, count as 5:30
+  if (isMorningShift && isInTime) {
     const timeInMinutes = hours * 60 + minutes;
-    const fiveAMInMinutes = 5 * 60; // 5:00 AM
-    const twelvePMInMinutes = 12 * 60; // 12:00 PM
-    const twelveFortyPMInMinutes = 12 * 60 + 40; // 12:40 PM
-
-    if (timeInMinutes > fiveAMInMinutes) {
-      if (isInTime) {
-        return "05:30"; // Fixed in-time for morning shift
-      } else if (timeInMinutes >= twelvePMInMinutes && timeInMinutes <= twelveFortyPMInMinutes) {
-        return "12:30"; // Fixed out-time for morning shift within 12:00-12:40
-      }
+    const fiveFifteenInMinutes = 5 * 60 + 15; // 5:15 AM
+    
+    if (timeInMinutes < fiveFifteenInMinutes) {
+      return "05:30"; // Fixed in-time for morning shift before 5:15
     }
   }
 
@@ -46,10 +40,10 @@ const convertDecimalToRoundedTime = (decimalTime: number, isInTime: boolean = tr
   } else {
     // If outside threshold, round to nearest hour
     if (minutes < threshold) {
-    minutes = 0; // Round down
-  } else {
-    minutes = 0; // Reset minutes
-    hours += 1; // Round up to next hour
+      minutes = 0; // Round down
+    } else {
+      minutes = 0; // Reset minutes
+      hours += 1; // Round up to next hour
     }
   }
 
@@ -63,14 +57,32 @@ const processRawTime = (attendanceRecords: AttendanceRecord[], dutyStartTime: st
 
   return attendanceRecords.map((record) => {
     const isMorningShift = record.isMorningShift || false; // Get morning shift status from record
-    return {
-    inTime: record.inTime
-        ? convertDecimalToRoundedTime(Number(record.inTime), true, dutyStartTime, isMorningShift)
-      : "NA",
-    outTime: record.outTime
-        ? convertDecimalToRoundedTime(Number(record.outTime), false, dutyEndTime, isMorningShift)
-      : "NA",
-    };
+    
+    // First, convert both times normally
+    let inTime = record.inTime
+      ? convertDecimalToRoundedTime(Number(record.inTime), true, dutyStartTime, isMorningShift)
+      : "NA";
+    let outTime = record.outTime
+      ? convertDecimalToRoundedTime(Number(record.outTime), false, dutyEndTime, isMorningShift)
+      : "NA";
+
+    // Apply 30-minute rounding logic if both times are valid
+    if (inTime !== "NA" && outTime !== "NA") {
+      const inMinutes = parseInt(inTime.split(":")[1]);
+      const outMinutes = parseInt(outTime.split(":")[1]);
+      
+      // Check if both times have minutes between 15-45
+      if ((inMinutes > 14 && inMinutes < 45) && (outMinutes > 14 && outMinutes < 45)) {
+        // Round both to 30 minutes
+        const inHours = parseInt(inTime.split(":")[0]);
+        const outHours = parseInt(outTime.split(":")[0]);
+        
+        inTime = `${inHours.toString().padStart(2, "0")}:30`;
+        outTime = `${outHours.toString().padStart(2, "0")}:30`;
+      }
+    }
+
+    return { inTime, outTime };
   });
 };
 

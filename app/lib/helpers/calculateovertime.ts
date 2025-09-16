@@ -28,7 +28,11 @@ function formatTime(time: dayjs.Dayjs) {
 function calculateDuration(startStr: string, endStr: string): number {
   const start = parseTime(startStr);
   const end = parseTime(endStr, endStr < startStr ? 1 : 0);
-  return end.diff(start, "minute") / 60;
+  const totalMinutes = end.diff(start, "minute");
+  const totalHours = totalMinutes / 60;
+  
+  // Round to nearest whole hour (no 30 minutes allowed)
+  return Math.round(totalHours);
 }
 
 function getDayName(startDay: number, dayIndex: number) {
@@ -246,8 +250,8 @@ const CalculateOvertime = async (
         day: dayNumber,
         currentMonth: name,
         ...overtime,
-        totalHours: parseFloat(total.toFixed(2)),
-        totalNightHours: parseFloat(nightTotal.toFixed(2)),
+        totalHours: Math.round(total), // Ensure whole hours only
+        totalNightHours: Math.round(nightTotal), // Ensure whole hours only
         isHolidayOvertime,
         typeOfHoliday: isOffDay && isCHD ? "OFF+CHD" : isOffDay ? "OFF" : isCHD ? "CHD" : null,
         hasBeforeDutyOvertime,
