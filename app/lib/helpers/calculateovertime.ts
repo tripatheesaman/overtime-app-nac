@@ -216,8 +216,8 @@ const CalculateOvertime = async (
         nightDutyStart,
         nightDutyEnd,
         isMorningShift,
-        morningShiftStart,
-        morningShiftEnd
+        dutyStartTime,
+        dutyEndTime
       );
 
       let total = 0;
