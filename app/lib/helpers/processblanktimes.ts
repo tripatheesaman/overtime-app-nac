@@ -27,7 +27,10 @@ const ProcessBlankTimes = async (
   attendanceData: AttendanceRecord[],
   regularInTime: string,
   regularOutTime: string,
-  offDay: string
+  offDay: string,
+  morningShiftStartTime?: string,
+  morningShiftEndTime?: string,
+  morningShiftDays?: number[]
 ) => {
   const currentMonthDetails = await getCurrentMonthDetails();
 
@@ -50,6 +53,7 @@ const ProcessBlankTimes = async (
     const isDayOff = dayOfWeekName.toLowerCase() === offDay.toLowerCase();
     const isHoliday = holidays.includes(dayOfMonth);
     const isOff = isDayOff || isHoliday;
+    const isMorningShift = morningShiftDays?.includes(dayOfMonth) || false;
 
     const nextDayIndex = (startDay + index + 1) % 7;
     const nextDayName = daysOfWeek[nextDayIndex];
@@ -58,19 +62,23 @@ const ProcessBlankTimes = async (
     let inTime = record.inTime;
     let outTime = record.outTime;
 
+    // Determine the appropriate duty times based on shift type
+    const dutyInTime = isMorningShift && morningShiftStartTime ? morningShiftStartTime : regularInTime;
+    const dutyOutTime = isMorningShift && morningShiftEndTime ? morningShiftEndTime : regularOutTime;
+
     if (inTime === "NA" && outTime === "NA") {
       if (isOff) {
         return { inTime, outTime };
       } else {
-        inTime = regularInTime;
-        outTime = isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(regularOutTime) : regularOutTime;
+        inTime = dutyInTime;
+        outTime = isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(dutyOutTime) : dutyOutTime;
       }
     } else {
       if (inTime === "NA") {
-        inTime = regularInTime;
+        inTime = dutyInTime;
       }
       if (outTime === "NA") {
-        outTime = isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(regularOutTime) : regularOutTime;
+        outTime = isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(dutyOutTime) : dutyOutTime;
       }
     }
 
