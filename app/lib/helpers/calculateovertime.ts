@@ -217,8 +217,8 @@ const CalculateOvertime = async (
         dutyEndTime,
         isHoliday,
         isNightDuty,
-        nightDutyStart,
-        nightDutyEnd,
+        dutyStartTime,
+        dutyEndTime,
         isMorningShift,
         dutyStartTime,
         dutyEndTime
