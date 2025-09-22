@@ -121,7 +121,10 @@ export const POST = async (req: NextRequest) => {
       data.regularOffDay,
       data.morningShiftStartTime,
       data.morningShiftEndTime,
-      data.morningShiftDays
+      data.morningShiftDays,
+      data.nightDutyStartTime,
+      data.nightDutyEndTime,
+      data.nightDutyDays
     );
   } catch (error: unknown) {
     if (error instanceof Error) {

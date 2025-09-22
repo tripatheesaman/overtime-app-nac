@@ -30,7 +30,10 @@ const ProcessBlankTimes = async (
   offDay: string,
   morningShiftStartTime?: string,
   morningShiftEndTime?: string,
-  morningShiftDays?: number[]
+  morningShiftDays?: number[],
+  nightDutyStartTime?: string,
+  nightDutyEndTime?: string,
+  nightDutyDays?: number[]
 ) => {
   const currentMonthDetails = await getCurrentMonthDetails();
 
@@ -54,6 +57,7 @@ const ProcessBlankTimes = async (
     const isHoliday = holidays.includes(dayOfMonth);
     const isOff = isDayOff || isHoliday;
     const isMorningShift = morningShiftDays?.includes(dayOfMonth) || false;
+    const isNightDuty = nightDutyDays?.includes(dayOfMonth) || false;
 
     const nextDayIndex = (startDay + index + 1) % 7;
     const nextDayName = daysOfWeek[nextDayIndex];
@@ -63,8 +67,16 @@ const ProcessBlankTimes = async (
     let outTime = record.outTime;
 
     // Determine the appropriate duty times based on shift type
-    const dutyInTime = isMorningShift && morningShiftStartTime ? morningShiftStartTime : regularInTime;
-    const dutyOutTime = isMorningShift && morningShiftEndTime ? morningShiftEndTime : regularOutTime;
+    let dutyInTime = regularInTime;
+    let dutyOutTime = regularOutTime;
+    
+    if (isNightDuty && nightDutyStartTime && nightDutyEndTime) {
+      dutyInTime = nightDutyStartTime;
+      dutyOutTime = nightDutyEndTime;
+    } else if (isMorningShift && morningShiftStartTime && morningShiftEndTime) {
+      dutyInTime = morningShiftStartTime;
+      dutyOutTime = morningShiftEndTime;
+    }
 
     if (inTime === "NA" && outTime === "NA") {
       if (isOff) {
