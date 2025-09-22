@@ -192,7 +192,7 @@ const CalculateOvertime = async (
       const isDayBeforeOff = nextDayName.toLowerCase() === regularOffDay.toLowerCase();
 
       const dutyStartTime = isNightDuty ? nightDutyStart : (isMorningShift ? morningShiftStart : regularStart);
-      const dutyEndTime = isNightDuty ? nightDutyEnd : (isMorningShift ? (isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(morningShiftEnd) : morningShiftEnd) : (isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(regularEnd) : regularEnd));
+      const dutyEndTime = isNightDuty ? (isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(nightDutyEnd) : nightDutyEnd) : (isMorningShift ? (isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(morningShiftEnd) : morningShiftEnd) : (isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(regularEnd) : regularEnd));
 
       if (!record || record.inTime === "NA" || record.outTime === "NA") {
         results.push({
