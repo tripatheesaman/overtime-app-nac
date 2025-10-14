@@ -4,46 +4,68 @@ import { AttendanceRecord } from "@/app/types/InputFormType";
 const IN_TIME_THRESHOLD = Number(process.env.NEXT_PUBLIC_IN_TIME_THRESHOLD) || 30;
 const OUT_TIME_THRESHOLD = Number(process.env.NEXT_PUBLIC_OUT_TIME_THRESHOLD) || 30;
 
-const convertDecimalToRoundedTime = (decimalTime: number, isInTime: boolean = true, dutyTime: string, isMorningShift: boolean = false): string => {
+const convertDecimalToRoundedTime = (
+  decimalTime: number,
+  isInTime: boolean = true,
+  dutyTime: string
+): string => {
   if (decimalTime === null || decimalTime === undefined) return "--"; // Handle missing values
 
   const totalMinutes = decimalTime * 24 * 60; // Convert fraction to total minutes
   let hours = Math.floor(totalMinutes / 60); // Extract hours
   let minutes = Math.round(totalMinutes % 60); // Extract minutes
+  const timeInMinutes = hours * 60 + minutes;
 
-  // For morning shift in-time: if before 5:15, count as 5:30
-  if (isMorningShift && isInTime) {
-    const timeInMinutes = hours * 60 + minutes;
-    const fiveFifteenInMinutes = 5 * 60 + 15; // 5:15 AM
-    
-    if (timeInMinutes < fiveFifteenInMinutes) {
-      return "05:30"; // Fixed in-time for morning shift before 5:15
+  // Special morning window handling between 04:50 and 06:00 (applies to any in-time)
+  // If in-time falls into this window and we're processing an in-time, apply special rules:
+  // - if > 05:15 and < 05:35 => 05:30
+  // - if <= 05:15 => 05:00
+  // - if >= 05:35 => 06:00
+  const specialWindowStart = 4 * 60 + 50; // 04:50
+  const specialWindowEnd = 6 * 60; // 06:00
+  const fiveFifteen = 5 * 60 + 15; // 05:15
+  const fiveThirtyFive = 5 * 60 + 35; // 05:35
+  if (isInTime && timeInMinutes >= specialWindowStart && timeInMinutes <= specialWindowEnd) {
+    if (timeInMinutes > fiveFifteen && timeInMinutes < fiveThirtyFive) {
+      return "05:30";
     }
+    if (timeInMinutes <= fiveFifteen) {
+      return "05:00";
+    }
+    return "06:00";
   }
 
-  // Parse duty time to get the threshold
+  // Parse duty time to get the threshold (used only when very close to duty time)
   const [dutyHours, dutyMinutes] = dutyTime.split(":").map(Number);
   const dutyTimeInMinutes = dutyHours * 60 + dutyMinutes;
 
   // Calculate time difference in minutes
-  const timeInMinutes = hours * 60 + minutes;
   const timeDiff = Math.abs(timeInMinutes - dutyTimeInMinutes);
 
-  // Use different thresholds for in and out times
+  // If within configured threshold of duty time, snap to duty time
   const threshold = isInTime ? IN_TIME_THRESHOLD : OUT_TIME_THRESHOLD;
-
-  // Round based on the threshold and duty time
   if (timeDiff < threshold) {
-    // If within threshold, round to duty time
     hours = dutyHours;
     minutes = dutyMinutes;
-  } else {
-    // If outside threshold, round to nearest hour
-    if (minutes < threshold) {
-      minutes = 0; // Round down
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+  }
+
+  // General rounding rules (no :30 here) — use thresholds to decide direction
+  if (isInTime) {
+    // For in time: if minutes > IN_TIME_THRESHOLD => round up, else round down
+    if (minutes > IN_TIME_THRESHOLD) {
+      minutes = 0;
+      hours += 1;
     } else {
-      minutes = 0; // Reset minutes
-      hours += 1; // Round up to next hour
+      minutes = 0;
+    }
+  } else {
+    // For out time: if minutes >= OUT_TIME_THRESHOLD => round up, else round down
+    if (minutes >= OUT_TIME_THRESHOLD) {
+      minutes = 0;
+      hours += 1;
+    } else {
+      minutes = 0;
     }
   }
 
@@ -56,28 +78,20 @@ const processRawTime = (attendanceRecords: AttendanceRecord[], dutyStartTime: st
   }
 
   return attendanceRecords.map((record) => {
-    const isMorningShift = record.isMorningShift || false; // Get morning shift status from record
-    
     // First, convert both times normally
-    let inTime = record.inTime
-      ? convertDecimalToRoundedTime(Number(record.inTime), true, dutyStartTime, isMorningShift)
+    const inTime = record.inTime
+      ? convertDecimalToRoundedTime(Number(record.inTime), true, dutyStartTime)
       : "NA";
     let outTime = record.outTime
-      ? convertDecimalToRoundedTime(Number(record.outTime), false, dutyEndTime, isMorningShift)
+      ? convertDecimalToRoundedTime(Number(record.outTime), false, dutyEndTime)
       : "NA";
 
-    // Apply 30-minute rounding logic if both times are valid
-    if (inTime !== "NA" && outTime !== "NA") {
-      const inMinutes = parseInt(inTime.split(":")[1]);
-      const outMinutes = parseInt(outTime.split(":")[1]);
-      
-      // Check if both times have minutes between 15-45
-      if ((inMinutes > 14 && inMinutes < 45) && (outMinutes > 14 && outMinutes < 45)) {
-        // Round both to 30 minutes
-        const inHours = parseInt(inTime.split(":")[0]);
-        const outHours = parseInt(outTime.split(":")[0]);
-        
-        inTime = `${inHours.toString().padStart(2, "0")}:30`;
+    // Only force outTime to :30 when inTime is the special 05:30 case and
+    // out minutes are between 15 and 45 inclusive. Otherwise keep normal rounding.
+    if (inTime !== "NA" && inTime === "05:30" && outTime !== "NA") {
+      const outMinutes = parseInt(outTime.split(":")[1], 10);
+      const outHours = parseInt(outTime.split(":")[0], 10);
+      if (outMinutes >= 15 && outMinutes <= 45) {
         outTime = `${outHours.toString().padStart(2, "0")}:30`;
       }
     }
