@@ -25,7 +25,6 @@ const getCurrentMonthDetails = async (): Promise<
   } catch (error) {
     return { message: error, status: 400 } as ErrorReturnType;
   } finally{
-    await prisma.$disconnect()
   }
 };
 

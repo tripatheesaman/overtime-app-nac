@@ -29,10 +29,11 @@ function calculateDuration(startStr: string, endStr: string): number {
   const start = parseTime(startStr);
   const end = parseTime(endStr, endStr < startStr ? 1 : 0);
   const totalMinutes = end.diff(start, "minute");
-  const totalHours = totalMinutes / 60;
-  
-  // Round to nearest whole hour (no 30 minutes allowed)
-  return Math.round(totalHours);
+
+  // Round minutes to nearest 30 minutes and return hours as decimal (0.5 increments)
+  const roundedToNearest30 = Math.round(totalMinutes / 30) * 30;
+  const totalHours = roundedToNearest30 / 60;
+  return totalHours;
 }
 
 function getDayName(startDay: number, dayIndex: number) {
@@ -224,8 +225,8 @@ const CalculateOvertime = async (
         dutyEndTime
       );
 
-      let total = 0;
-      let nightTotal = 0;
+  let total = 0;
+  let nightTotal = 0;
       const hasBeforeDutyOvertime = !!overtime.beforeDuty;
       const hasAfterDutyOvertime = !!overtime.afterDuty;
       const hasNightOvertime = !!overtime.night;
@@ -250,8 +251,8 @@ const CalculateOvertime = async (
         day: dayNumber,
         currentMonth: name,
         ...overtime,
-        totalHours: Math.round(total), // Ensure whole hours only
-        totalNightHours: Math.round(nightTotal), // Ensure whole hours only
+        totalHours: total, // Hours in 0.5 increments (rounded to nearest 30 minutes)
+        totalNightHours: nightTotal, // Hours in 0.5 increments
         isHolidayOvertime,
         typeOfHoliday: isOffDay && isCHD ? "OFF+CHD" : isOffDay ? "OFF" : isCHD ? "CHD" : null,
         hasBeforeDutyOvertime,
