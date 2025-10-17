@@ -29,7 +29,7 @@ const ProcessBlankTimes = async (
   regularOutTime: string,
   offDay: string,
   morningShiftStartTime?: string,
-  morningShiftEndTime?: string,
+  morningShiftEndTime ?: string,
   morningShiftDays?: number[],
   nightDutyStartTime?: string,
   nightDutyEndTime?: string,
