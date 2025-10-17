@@ -127,6 +127,7 @@ const Step4 = () => {
     let row = 10;
     let totalRegularOT = 0;
     let totalHolidayOT = 0;
+    let totalDashainOT = 0;
     let totalNightHours = 0;
     overtimeData.forEach((entry) => {
       const currentRow = sheet.getRow(row);
@@ -140,7 +141,11 @@ const Step4 = () => {
       if (entry.holiday) {
         currentRow.getCell("D").value = entry.holiday[0];
         currentRow.getCell("E").value = entry.holiday[1];
-        totalHolidayOT += entry.totalHours;
+        if (entry.isDashainOvertime) {
+          totalDashainOT += entry.totalDashainHours || 0;
+        } else {
+          totalHolidayOT += entry.totalHours;
+        }
       }
 
       if (entry.afterDuty) {
@@ -152,15 +157,29 @@ const Step4 = () => {
         currentRow.getCell("I").value = entry.night[0];
         currentRow.getCell("J").value = entry.night[1];
       }
-      if (entry.totalHours > 0)
-        currentRow.getCell("H").value = formatTotalHours(entry.totalHours);
+      
+      // Display total hours based on type
+      if (entry.isDashainOvertime) {
+        if (entry.totalDashainHours > 0)
+          currentRow.getCell("H").value = formatTotalHours(entry.totalDashainHours);
+      } else {
+        if (entry.totalHours > 0)
+          currentRow.getCell("H").value = formatTotalHours(entry.totalHours);
+      }
+      
       if (entry.totalNightHours > 0)
         currentRow.getCell("K").value = formatTotalHours(entry.totalNightHours);
+      
+      // Display holiday type
       if (entry.typeOfHoliday !== null)
         currentRow.getCell("L").value = entry.typeOfHoliday;
+      
       totalNightHours += entry.totalNightHours;
-      if (!entry.holiday)
+      
+      // Add to regular OT only if not Dashain and not holiday
+      if (!entry.holiday && !entry.isDashainOvertime)
         totalRegularOT += entry.totalHours;
+      
       currentRow.commit();
       row++;
     });
@@ -171,9 +190,10 @@ const Step4 = () => {
     sheet.getCell("L6").value = formData.regularOffDay;
 
     // Set total values in HH:MM format
-    sheet.getCell("H43").value = formatTotalHours(totalRegularOT);
-    sheet.getCell("D43").value = formatTotalHours(totalHolidayOT);
-    sheet.getCell("F44").value = formatTotalHours(totalRegularOT + totalHolidayOT);
+    sheet.getCell("H44").value = formatTotalHours(totalDashainOT); // Dashain total in H44
+    sheet.getCell("H43").value = formatTotalHours(totalRegularOT); // Regular total in D44
+    sheet.getCell("D43").value = formatTotalHours(totalHolidayOT); // Holiday total in D43
+    sheet.getCell("D44").value = formatTotalHours(totalRegularOT + totalHolidayOT); // Grand total
     sheet.getCell("K43").value = formatTotalHours(totalNightHours);
 
     const buffer = await workbook.xlsx.writeBuffer();

@@ -167,7 +167,9 @@ const CalculateOvertime = async (
       morning?: [string, string];
       totalHours: number;
       totalNightHours: number;
+      totalDashainHours: number;
       isHolidayOvertime: boolean;
+      isDashainOvertime: boolean;
       typeOfHoliday: string | null;
       hasBeforeDutyOvertime: boolean;
       hasAfterDutyOvertime: boolean;
@@ -187,6 +189,10 @@ const CalculateOvertime = async (
       const isNightDuty = nightDutyDays.includes(dayNumber);
       const isMorningShift = morningShiftDays.includes(dayNumber);
 
+      // Check if this is a Dashain day (Ashwin 2082, days 14-17)
+      const isDashainDay = name === "Ashwin" && currentMonthDetails.year === 2082 && 
+                           (dayNumber === 14 || dayNumber === 15 || dayNumber === 16 || dayNumber === 17);
+
       // Check if next day is off day
       const nextDayIndex = (startDay + i + 1) % 7;
       const nextDayName = dayNames[nextDayIndex];
@@ -201,8 +207,10 @@ const CalculateOvertime = async (
           currentMonth: name,
           totalHours: 0,
           totalNightHours: 0,
-          isHolidayOvertime: isHoliday,
-          typeOfHoliday: isOffDay && isCHD ? "OFF+CHD" : isOffDay ? "OFF" : isCHD ? "CHD" : null,
+          totalDashainHours: 0,
+          isHolidayOvertime: isHoliday && !isDashainDay,
+          isDashainOvertime: isDashainDay,
+          typeOfHoliday: isDashainDay ? "DASHAIN" : (isOffDay && isCHD ? "OFF+CHD" : isOffDay ? "OFF" : isCHD ? "CHD" : null),
           hasBeforeDutyOvertime: false,
           hasAfterDutyOvertime: false,
           hasNightOvertime: false,
@@ -225,25 +233,44 @@ const CalculateOvertime = async (
         dutyEndTime
       );
 
-  let total = 0;
-  let nightTotal = 0;
+      let total = 0;
+      let nightTotal = 0;
+      let dashainTotal = 0;
       const hasBeforeDutyOvertime = !!overtime.beforeDuty;
       const hasAfterDutyOvertime = !!overtime.afterDuty;
       const hasNightOvertime = !!overtime.night;
       const hasMorningOvertime = !!overtime.morning;
       const isHolidayOvertime = !!overtime.holiday;
 
-      if (hasBeforeDutyOvertime) {
-        total += calculateDuration(...overtime.beforeDuty!);
-      }
-      if (hasAfterDutyOvertime) {
-        total += calculateDuration(...overtime.afterDuty!);
-      }
-      if (isHolidayOvertime) {
-        total += calculateDuration(...overtime.holiday!);
-      }
-      if (hasNightOvertime) {
-        nightTotal += calculateDuration(...overtime.night!);
+      // Calculate overtime based on whether it's a Dashain day
+      if (isDashainDay) {
+        // For Dashain days, all overtime goes to Dashain total
+        if (hasBeforeDutyOvertime) {
+          dashainTotal += calculateDuration(...overtime.beforeDuty!);
+        }
+        if (hasAfterDutyOvertime) {
+          dashainTotal += calculateDuration(...overtime.afterDuty!);
+        }
+        if (isHolidayOvertime) {
+          dashainTotal += calculateDuration(...overtime.holiday!);
+        }
+        if (hasNightOvertime) {
+          nightTotal += calculateDuration(...overtime.night!);
+        }
+      } else {
+        // For regular days, calculate normally
+        if (hasBeforeDutyOvertime) {
+          total += calculateDuration(...overtime.beforeDuty!);
+        }
+        if (hasAfterDutyOvertime) {
+          total += calculateDuration(...overtime.afterDuty!);
+        }
+        if (isHolidayOvertime) {
+          total += calculateDuration(...overtime.holiday!);
+        }
+        if (hasNightOvertime) {
+          nightTotal += calculateDuration(...overtime.night!);
+        }
       }
       // For morning shift, overtime is only before/after the shift, not the main shift window
 
@@ -251,10 +278,12 @@ const CalculateOvertime = async (
         day: dayNumber,
         currentMonth: name,
         ...overtime,
-        totalHours: total, // Hours in 0.5 increments (rounded to nearest 30 minutes)
-        totalNightHours: nightTotal, // Hours in 0.5 increments
-        isHolidayOvertime,
-        typeOfHoliday: isOffDay && isCHD ? "OFF+CHD" : isOffDay ? "OFF" : isCHD ? "CHD" : null,
+        totalHours: Math.round(total), // Ensure whole hours only
+        totalNightHours: Math.round(nightTotal), // Ensure whole hours only
+        totalDashainHours: Math.round(dashainTotal), // Ensure whole hours only
+        isHolidayOvertime: isHolidayOvertime && !isDashainDay,
+        isDashainOvertime: isDashainDay,
+        typeOfHoliday: isDashainDay ? "DASHAIN" : (isOffDay && isCHD ? "OFF+CHD" : isOffDay ? "OFF" : isCHD ? "CHD" : null),
         hasBeforeDutyOvertime,
         hasAfterDutyOvertime,
         hasNightOvertime,
