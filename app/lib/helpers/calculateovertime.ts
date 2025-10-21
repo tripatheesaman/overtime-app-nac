@@ -56,9 +56,7 @@ function getOvertimeIntervals(
   isNight: boolean,
   nightDutyStart: string,
   nightDutyEnd: string,
-  isMorning: boolean,
-  morningShiftStart: string,
-  morningShiftEnd: string
+  isMorning: boolean
 ) {
   const result: {
     beforeDuty?: [string, string];
@@ -79,8 +77,6 @@ function getOvertimeIntervals(
   const midnight = dayjs().startOf("day").add(1, "day");
   const nightStartTime = parseTime(nightDutyStart);
   const nightEndTime = parseTime(nightDutyEnd);
-  const morningStartTime = parseTime(morningShiftStart);
-  const morningEndTime = parseTime(morningShiftEnd);
 
   if (isHoliday) {
     if (isNight) {
@@ -228,9 +224,7 @@ const CalculateOvertime = async (
         isNightDuty,
         dutyStartTime,
         dutyEndTime,
-        isMorningShift,
-        dutyStartTime,
-        dutyEndTime
+        isMorningShift
       );
 
       let total = 0;

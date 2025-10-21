@@ -88,8 +88,8 @@ const processRawTime = (attendanceRecords: AttendanceRecord[], dutyStartTime: st
     if (record.outTime) {
       const outDecimalTime = Number(record.outTime);
       const totalMinutes = outDecimalTime * 24 * 60;
-      let outHours = Math.floor(totalMinutes / 60);
-      let outMinutes = Math.round(totalMinutes % 60);
+      const outHours = Math.floor(totalMinutes / 60);
+      const outMinutes = Math.round(totalMinutes % 60);
       
       // Special case: If in-time is 5:30, apply special out-time logic
       if (inTime === "05:30" && outMinutes >= 15 && outMinutes <= 45) {
