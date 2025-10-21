@@ -25,7 +25,7 @@ const convertDecimalToRoundedTime = (
   const specialWindowEnd = 6 * 60; // 06:00
   const fiveFifteen = 5 * 60 + 15; // 05:15
   const fiveThirtyFive = 5 * 60 + 35; // 05:35
-  if (isInTime && timeInMinutes >= specialWindowStart && timeInMinutes <= specialWindowEnd) {
+  if (isInTime && timeInMinutes >= specialWindowStart && timeInMinutes < specialWindowEnd) {
     if (timeInMinutes > fiveFifteen && timeInMinutes < fiveThirtyFive) {
       return "05:30";
     }
@@ -78,21 +78,25 @@ const processRawTime = (attendanceRecords: AttendanceRecord[], dutyStartTime: st
   }
 
   return attendanceRecords.map((record) => {
-    // First, convert both times normally
+    // First, convert in-time normally
     const inTime = record.inTime
       ? convertDecimalToRoundedTime(Number(record.inTime), true, dutyStartTime)
       : "NA";
-    let outTime = record.outTime
-      ? convertDecimalToRoundedTime(Number(record.outTime), false, dutyEndTime)
-      : "NA";
-
-    // Only force outTime to :30 when inTime is the special 05:30 case and
-    // out minutes are between 15 and 45 inclusive. Otherwise keep normal rounding.
-    if (inTime !== "NA" && inTime === "05:30" && outTime !== "NA") {
-      const outMinutes = parseInt(outTime.split(":")[1], 10);
-      const outHours = parseInt(outTime.split(":")[0], 10);
-      if (outMinutes >= 15 && outMinutes <= 45) {
+    
+    // For out-time, check if we need special handling first
+    let outTime = "NA";
+    if (record.outTime) {
+      const outDecimalTime = Number(record.outTime);
+      const totalMinutes = outDecimalTime * 24 * 60;
+      const outHours = Math.floor(totalMinutes / 60);
+      const outMinutes = Math.round(totalMinutes % 60);
+      
+      // Special case: If in-time is 5:30, apply special out-time logic
+      if (inTime === "05:30" && outMinutes >= 15 && outMinutes <= 45) {
         outTime = `${outHours.toString().padStart(2, "0")}:30`;
+      } else {
+        // Use normal rounding logic
+        outTime = convertDecimalToRoundedTime(outDecimalTime, false, dutyEndTime);
       }
     }
 

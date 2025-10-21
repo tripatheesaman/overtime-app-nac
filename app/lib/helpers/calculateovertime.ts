@@ -56,9 +56,7 @@ function getOvertimeIntervals(
   isNight: boolean,
   nightDutyStart: string,
   nightDutyEnd: string,
-  isMorning: boolean,
-  morningShiftStart: string,
-  morningShiftEnd: string
+  isMorning: boolean
 ) {
   const result: {
     beforeDuty?: [string, string];
@@ -79,8 +77,6 @@ function getOvertimeIntervals(
   const midnight = dayjs().startOf("day").add(1, "day");
   const nightStartTime = parseTime(nightDutyStart);
   const nightEndTime = parseTime(nightDutyEnd);
-  const morningStartTime = parseTime(morningShiftStart);
-  const morningEndTime = parseTime(morningShiftEnd);
 
   if (isHoliday) {
     if (isNight) {
@@ -111,14 +107,14 @@ function getOvertimeIntervals(
     }
   } else if (isMorning) {
     // For regular morning shift, only time outside the morning window is overtime
-    if (start.isBefore(morningStartTime)) {
-      result.beforeDuty = [formatTime(start), formatTime(morningStartTime)];
+    if (start.isBefore(dutyStartTime)) {
+      result.beforeDuty = [formatTime(start), formatTime(dutyStartTime)];
     }
-    if (end.isAfter(morningEndTime)) {
-      result.afterDuty = [formatTime(morningEndTime), formatTime(end)];
+    if (end.isAfter(dutyEndTime)) {
+      result.afterDuty = [formatTime(dutyEndTime), formatTime(end)];
     }
     // Optionally, you could add a 'morning' key for the main shift window
-    result.morning = [formatTime(morningStartTime), formatTime(morningEndTime)];
+    result.morning = [formatTime(dutyStartTime), formatTime(dutyEndTime)];
   } else {
     // For regular duty
     if (start.isBefore(dutyStartTime)) {
@@ -228,9 +224,7 @@ const CalculateOvertime = async (
         isNightDuty,
         dutyStartTime,
         dutyEndTime,
-        isMorningShift,
-        dutyStartTime,
-        dutyEndTime
+        isMorningShift
       );
 
       let total = 0;
@@ -278,9 +272,9 @@ const CalculateOvertime = async (
         day: dayNumber,
         currentMonth: name,
         ...overtime,
-        totalHours: Math.round(total), // Ensure whole hours only
-        totalNightHours: Math.round(nightTotal), // Ensure whole hours only
-        totalDashainHours: Math.round(dashainTotal), // Ensure whole hours only
+        totalHours: total, // Keep 0.5 hour increments
+        totalNightHours: nightTotal, // Keep 0.5 hour increments
+        totalDashainHours: dashainTotal, // Keep 0.5 hour increments
         isHolidayOvertime: isHolidayOvertime && !isDashainDay,
         isDashainOvertime: isDashainDay,
         typeOfHoliday: isDashainDay ? "DASHAIN" : (isOffDay && isCHD ? "OFF+CHD" : isOffDay ? "OFF" : isCHD ? "CHD" : null),
