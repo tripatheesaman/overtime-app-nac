@@ -27,6 +27,7 @@ model OverTimeDetails{
   departmentId Int
   department Department @relation(fields: [departmentId], references: [id])
   @@index([departmentId])
+  @@map("overtimedetails")
 }
 
 model DayDetails{
@@ -56,6 +57,7 @@ model DayDetails{
   winterMorningOutPlaceholder String?
   winterNightInPlaceholder String?
   winterNightOutPlaceholder String?
+  @@map("daydetails")
 }
 
 model Department {
@@ -79,10 +81,20 @@ model Department {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   overtimeRecords OverTimeDetails[]
+  @@map("department")
 }
 
 model Settings{
   id  Int @id @default(1)
   isWinter Boolean @default(false)
   winterStartDay Int?
+  @@map("settings")
+}
+
+model User {
+  id       Int    @id @default(autoincrement())
+  username String @unique
+  password String
+  role     String
+  @@map("user")
 }
