@@ -8,17 +8,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Missing credentials' }, { status: 400 })
     }
 
-    // Query raw to avoid needing Prisma model changes
-    const rows = await prisma.$queryRawUnsafe<Array<{ id: number; username: string; password: string; role: string }>>(
-      'SELECT id, username, password, role FROM User WHERE username = ? LIMIT 1',
-      username
-    )
+    // Query user using Prisma
+    const user = await prisma.user.findUnique({
+      where: { username },
+      select: { id: true, username: true, password: true, role: true }
+    })
 
-    if (!rows || rows.length === 0) {
+    if (!user) {
       return NextResponse.json({ success: false, error: 'Invalid credentials' }, { status: 401 })
     }
-
-    const user = rows[0]
 
     // Plaintext compare (since seeding is plaintext). Replace with bcrypt compare after you hash passwords.
     if (String(user.password) !== String(password)) {
@@ -51,13 +49,16 @@ export async function PUT(req: NextRequest) {
     if (!username || !currentPassword || !newPassword) {
       return NextResponse.json({ success: false, error: 'Missing fields' }, { status: 400 })
     }
-    const rows = await prisma.$queryRawUnsafe<Array<{ id: number; username: string; password: string }>>(
-      'SELECT id, username, password FROM User WHERE username = ? LIMIT 1',
-      username
-    )
-    if (!rows || rows.length === 0) return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 })
-    if (String(rows[0].password) !== String(currentPassword)) return NextResponse.json({ success: false, error: 'Invalid current password' }, { status: 401 })
-    await prisma.$executeRawUnsafe('UPDATE User SET password = ? WHERE id = ?', newPassword, rows[0].id)
+    const user = await prisma.user.findUnique({
+      where: { username },
+      select: { id: true, password: true }
+    })
+    if (!user) return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 })
+    if (String(user.password) !== String(currentPassword)) return NextResponse.json({ success: false, error: 'Invalid current password' }, { status: 401 })
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: newPassword }
+    })
     return NextResponse.json({ success: true })
   } catch (error) {
     return NextResponse.json({ success: false, error: String(error) }, { status: 500 })
