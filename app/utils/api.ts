@@ -13,12 +13,23 @@ export const sendFormData = async (
     });
 
     if (!response.ok) {
-      throw new Error(`Error: ${response.status} ${response.statusText}`);
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Error: ${response.status} ${response.statusText}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    if (!data) {
+      throw new Error("No response data received");
+    }
+    if (!data.success) {
+      throw new Error(data.error || "Unknown error occurred");
+    }
+    return data;
   } catch (error) {
     console.error("Failed to send formData:", error);
-    return { error: "Failed to send data. Please try again later." };
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Failed to send data. Please try again later." 
+    };
   }
 };
