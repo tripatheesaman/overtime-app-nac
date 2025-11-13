@@ -19,6 +19,7 @@ export const FormContextProvider:React.FC<FormContextProviderProps> = ({children
         staffId: "",
         regularOffDay: "Saturday",
         designation: "",
+        departmentId: 0,
         dutyStartTime: "",
         dutyEndTime: "",
         nightDutyStartTime: "",
