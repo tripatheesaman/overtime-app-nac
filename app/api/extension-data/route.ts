@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
       
       // Fetch global winter settings
       const settings = await prisma.$queryRawUnsafe<Array<{ isWinter: number; winterStartDay: number | null }>>(
-        'SELECT isWinter, winterStartDay FROM Settings WHERE id = 1 LIMIT 1'
+        'SELECT isWinter, winterStartDay FROM settings WHERE id = 1 LIMIT 1'
       );
       
       const winterSettings = settings && settings.length > 0 

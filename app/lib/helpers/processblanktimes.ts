@@ -59,7 +59,7 @@ const ProcessBlankTimes = async (
   let winterStartDay: number | null = null;
   try {
     const settings = await prisma.$queryRawUnsafe<Array<{ isWinter: number; winterStartDay: number | null }>>(
-      'SELECT isWinter, winterStartDay FROM Settings WHERE id = 1 LIMIT 1'
+      'SELECT isWinter, winterStartDay FROM settings WHERE id = 1 LIMIT 1'
     );
     if (settings && settings.length > 0) {
       isWinterEnabled = Boolean(settings[0].isWinter);

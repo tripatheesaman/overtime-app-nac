@@ -7,7 +7,7 @@ const SETTINGS_ID = 1;
 export async function GET() {
   try {
     const settings = await prisma.$queryRawUnsafe<Array<{ isWinter: number; winterStartDay: number | null }>>(
-      'SELECT isWinter, winterStartDay FROM Settings WHERE id = ? LIMIT 1',
+      'SELECT isWinter, winterStartDay FROM settings WHERE id = ? LIMIT 1',
       SETTINGS_ID
     );
     
@@ -40,20 +40,20 @@ export async function POST(req: NextRequest) {
     const { isWinter, winterStartDay } = await req.json();
     
     const exists = await prisma.$queryRawUnsafe<Array<{ id: number }>>(
-      'SELECT id FROM Settings WHERE id = ? LIMIT 1',
+      'SELECT id FROM settings WHERE id = ? LIMIT 1',
       SETTINGS_ID
     );
     
     if (exists && exists.length > 0) {
       await prisma.$executeRawUnsafe(
-        'UPDATE Settings SET isWinter = ?, winterStartDay = ? WHERE id = ?',
+        'UPDATE settings SET isWinter = ?, winterStartDay = ? WHERE id = ?',
         isWinter ? 1 : 0,
         winterStartDay || null,
         SETTINGS_ID
       );
     } else {
       await prisma.$executeRawUnsafe(
-        'INSERT INTO Settings (id, isWinter, winterStartDay) VALUES (?, ?, ?)',
+        'INSERT INTO settings (id, isWinter, winterStartDay) VALUES (?, ?, ?)',
         SETTINGS_ID,
         isWinter ? 1 : 0,
         winterStartDay || null
