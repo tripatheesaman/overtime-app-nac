@@ -48,6 +48,7 @@ export const POST = async (req: NextRequest) => {
     "name",
     "staffId",
     "designation",
+    "departmentId",
   ];
 
   for (const field of requiredFields) {
@@ -153,7 +154,8 @@ export const POST = async (req: NextRequest) => {
     data.nightDutyEndTime,
     data.morningShiftDays,
     data.morningShiftStartTime,
-    data.morningShiftEndTime
+    data.morningShiftEndTime,
+    data.departmentId
   );
   return NextResponse.json(
     {

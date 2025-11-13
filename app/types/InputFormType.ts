@@ -17,6 +17,7 @@ export interface FormData {
   name: string;
   designation: string;
   staffId: string;
+  departmentId: number;
   regularOffDay: dayOfWeek;
   dutyStartTime: string;
   dutyEndTime: string;
@@ -27,4 +28,7 @@ export interface FormData {
   inOutTimes: AttendanceRecord[];
   nightDutyDays: number[];
   morningShiftDays: number[];
+  isWinter?: boolean;
+  winterStartDay?: number; // 1-31
+  winterStartMonth?: number; // 1-12 (Nepali or English month as per your usage)
 }

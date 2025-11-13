@@ -24,6 +24,9 @@ model OverTimeDetails{
   regulardutyhoursto  String
   attendancedata  Json
   createdAt DateTime @default(now())
+  departmentId Int
+  department Department @relation(fields: [departmentId], references: [id])
+  @@index([departmentId])
 }
 
 model DayDetails{
@@ -33,5 +36,53 @@ model DayDetails{
   numberofdays  Int
   holidays Json
   year  Int
+  monthNumber Int
   isActiveMonth Boolean @default(false)
+  // Optional festival metadata (managed via admin dashboard)
+  isDashainMonth Boolean @default(false)
+  dashainDays Json?
+  isTiharMonth Boolean @default(false)
+  tiharDays Json?
+  // Editable placeholders for shift times
+  regularInPlaceholder String?
+  regularOutPlaceholder String?
+  morningInPlaceholder String?
+  morningOutPlaceholder String?
+  nightInPlaceholder String?
+  nightOutPlaceholder String?
+  winterRegularInPlaceholder String?
+  winterRegularOutPlaceholder String?
+  winterMorningInPlaceholder String?
+  winterMorningOutPlaceholder String?
+  winterNightInPlaceholder String?
+  winterNightOutPlaceholder String?
+}
+
+model Department {
+  id          Int @id @default(autoincrement())
+  name        String @unique
+  code        String @unique // For template file naming (e.g., "grsd", "it")
+  templateFile String // Actual template file name (e.g., "template_grsd.xlsx")
+  // Department-specific placeholders for shift times
+  regularInPlaceholder String?
+  regularOutPlaceholder String?
+  morningInPlaceholder String?
+  morningOutPlaceholder String?
+  nightInPlaceholder String?
+  nightOutPlaceholder String?
+  winterRegularInPlaceholder String?
+  winterRegularOutPlaceholder String?
+  winterMorningInPlaceholder String?
+  winterMorningOutPlaceholder String?
+  winterNightInPlaceholder String?
+  winterNightOutPlaceholder String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  overtimeRecords OverTimeDetails[]
+}
+
+model Settings{
+  id  Int @id @default(1)
+  isWinter Boolean @default(false)
+  winterStartDay Int?
 }

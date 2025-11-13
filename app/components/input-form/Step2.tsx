@@ -2,12 +2,20 @@ import { useFormContext } from "@/app/context/FormContext";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const baseTimeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
+interface Department {
+  id: number;
+  name: string;
+  code: string;
+  templateFile: string;
+}
+
 const schema = z
   .object({
+    departmentId: z.number().min(1, "Please select a department"),
     dutyStartTime: z
       .string()
       .regex(baseTimeRegex, "Invalid time format! Use HH:MM"),
@@ -62,12 +70,17 @@ const Step2 = () => {
   const { setStep, formData, setFormData } = useFormContext();
   const [nightDutyEnabled, setNightDutyEnabled] = useState(!!formData.nightDutyStartTime);
   const [morningShiftEnabled, setMorningShiftEnabled] = useState(!!formData.morningShiftStartTime);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(true);
+
   const {
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
   } = useForm<FormValues>({
     defaultValues: {
+      departmentId: formData.departmentId || 0,
       dutyStartTime: formData.dutyStartTime || "10:00",
       dutyEndTime: formData.dutyEndTime || "17:00",
       nightDutyEnabled: !!formData.nightDutyStartTime,
@@ -80,9 +93,42 @@ const Step2 = () => {
     resolver: zodResolver(schema),
   });
 
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await fetch("/api/department");
+        const data = await response.json();
+        if (data.success) {
+          setDepartments(data.data);
+          
+          // Set Ground Support Department as default if no department is selected
+          if (!formData.departmentId || formData.departmentId === 0) {
+            const groundSupportDept = data.data.find(
+              (dept: Department) => 
+                dept.code?.toLowerCase() === "grsd" || 
+                dept.name?.toLowerCase().includes("ground support")
+            );
+            if (groundSupportDept) {
+              setValue("departmentId", groundSupportDept.id);
+              setFormData({ departmentId: groundSupportDept.id });
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch departments:", error);
+      } finally {
+        setLoadingDepartments(false);
+      }
+    };
+    fetchDepartments();
+  }, [setValue, setFormData, formData.departmentId]);
+
   const onSubmit = (data: FormValues) => {
     setFormData({
-      ...data,
+      // Preserve existing employee data from extension
+      departmentId: data.departmentId,
+      dutyStartTime: data.dutyStartTime,
+      dutyEndTime: data.dutyEndTime,
       nightDutyStartTime: nightDutyEnabled ? data.nightDutyStartTime : "",
       nightDutyEndTime: nightDutyEnabled ? data.nightDutyEndTime : "",
       morningShiftStartTime: morningShiftEnabled ? data.morningShiftStartTime : "",
@@ -98,8 +144,68 @@ const Step2 = () => {
           Duty Schedule
         </h2>
         <p className="text-gray-600 dark:text-gray-300">
-          Please set your regular and night duty timings.
+          Please select your department and set your duty timings.
         </p>
+      </div>
+
+      {/* Employee Information Display (Read-only if from extension) */}
+      {(formData.name || formData.staffId || formData.designation) && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+            Employee Information
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            {formData.name && (
+              <div>
+                <span className="text-gray-600 dark:text-gray-400">Name: </span>
+                <span className="font-medium text-gray-900 dark:text-white">{formData.name}</span>
+              </div>
+            )}
+            {formData.staffId && (
+              <div>
+                <span className="text-gray-600 dark:text-gray-400">Staff ID: </span>
+                <span className="font-medium text-gray-900 dark:text-white">{formData.staffId}</span>
+              </div>
+            )}
+            {formData.designation && (
+              <div>
+                <span className="text-gray-600 dark:text-gray-400">Designation: </span>
+                <span className="font-medium text-gray-900 dark:text-white">{formData.designation}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Department Selection */}
+      <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-xl">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+          Department Selection
+        </h3>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Department <span className="text-[#D4483B]">*</span>
+          </label>
+          <select
+            {...register("departmentId", { valueAsNumber: true })}
+            className="input-field"
+            disabled={loadingDepartments}
+          >
+            <option value={0}>
+              {loadingDepartments ? "Loading departments..." : "Select a department"}
+            </option>
+            {departments.map((dept) => (
+              <option key={dept.id} value={dept.id}>
+                {dept.name}
+              </option>
+            ))}
+          </select>
+          {errors.departmentId && (
+            <p className="mt-1 text-sm text-[#D4483B]">
+              {String(errors.departmentId.message)}
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-xl">

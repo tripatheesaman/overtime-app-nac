@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import getCurrentMonthDetails from "@/app/services/DayDetails";
+import prisma from "@/app/lib/prisma";
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -20,9 +21,19 @@ export async function GET(req: NextRequest) {
           error: monthDetails.message 
         }, { status: monthDetails.status });
       }
+      
+      // Fetch global winter settings
+      const settings = await prisma.$queryRawUnsafe<Array<{ isWinter: number; winterStartDay: number | null }>>(
+        'SELECT isWinter, winterStartDay FROM Settings WHERE id = 1 LIMIT 1'
+      );
+      
+      const winterSettings = settings && settings.length > 0 
+        ? { isWinter: Boolean(settings[0].isWinter), winterStartDay: settings[0].winterStartDay }
+        : { isWinter: false, winterStartDay: null };
+      
       return NextResponse.json({ 
         success: true, 
-        data: monthDetails 
+        data: { ...monthDetails, ...winterSettings }
       });
     }
 
@@ -32,5 +43,7 @@ export async function GET(req: NextRequest) {
       { error: `Invalid data format: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 400 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 } 

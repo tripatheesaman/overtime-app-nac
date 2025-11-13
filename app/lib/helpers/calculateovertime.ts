@@ -79,18 +79,25 @@ function getOvertimeIntervals(
   const nightEndTime = parseTime(nightDutyEnd);
 
   if (isHoliday) {
-    if (isNight) {
+    // For holidays, if inTime is before duty start time, calculate beforeDuty separately
+    // This ensures column C is filled correctly for holidays and Dashain/Tihar days
+    if (start.isBefore(dutyStartTime)) {
+      result.beforeDuty = [formatTime(start), formatTime(dutyStartTime)];
+      // On holidays, all time from duty start to end is treated as holiday overtime (no capping to duty end)
+      if (end.isAfter(midnight)) {
+        result.holiday = [formatTime(dutyStartTime), formatTime(midnight)];
+        result.night = [formatTime(midnight), formatTime(end)];
+      } else {
+        result.holiday = [formatTime(dutyStartTime), formatTime(end)];
+      }
+    } else {
+      // If inTime is not before duty start, all time from start to end is holiday overtime
       if (end.isAfter(midnight)) {
         result.holiday = [formatTime(start), formatTime(midnight)];
         result.night = [formatTime(midnight), formatTime(end)];
       } else {
         result.holiday = [formatTime(start), formatTime(end)];
       }
-    } else if (isMorning) {
-      // All time is overtime for morning shift on holiday
-      result.holiday = [formatTime(start), formatTime(end)];
-    } else {
-      result.holiday = [formatTime(start), formatTime(end)];
     }
     return result;
   }
@@ -141,9 +148,61 @@ const CalculateOvertime = async (
   nightDutyEnd: string,
   morningShiftDays: number[] = [],
   morningShiftStart: string = "",
-  morningShiftEnd: string = ""
+  morningShiftEnd: string = "",
+  departmentId?: number
 ) => {
   const currentMonthDetails = await getCurrentMonthDetails();
+  
+  // Fetch global winter settings
+  let isWinterEnabled = false;
+  let winterStartDay: number | null = null;
+  try {
+    const prisma = (await import("@/app/lib/prisma")).default;
+    const settings = await prisma.$queryRawUnsafe<Array<{ isWinter: number; winterStartDay: number | null }>>(
+      'SELECT isWinter, winterStartDay FROM Settings WHERE id = 1 LIMIT 1'
+    );
+    if (settings && settings.length > 0) {
+      isWinterEnabled = Boolean(settings[0].isWinter);
+      winterStartDay = settings[0].winterStartDay;
+    }
+  } catch {}
+  
+  // Fetch department-specific winter placeholders if departmentId is provided
+  let departmentInfo: {
+    winterRegularInPlaceholder?: string | null;
+    winterRegularOutPlaceholder?: string | null;
+    winterMorningInPlaceholder?: string | null;
+    winterMorningOutPlaceholder?: string | null;
+    winterNightInPlaceholder?: string | null;
+    winterNightOutPlaceholder?: string | null;
+  } | null = null;
+  if (departmentId) {
+    try {
+      const prisma = (await import("@/app/lib/prisma")).default;
+      const dept = await prisma.department.findUnique({
+        where: { id: departmentId },
+        select: {
+          winterRegularInPlaceholder: true,
+          winterRegularOutPlaceholder: true,
+          winterMorningInPlaceholder: true,
+          winterMorningOutPlaceholder: true,
+          winterNightInPlaceholder: true,
+          winterNightOutPlaceholder: true,
+        },
+      });
+      if (dept) {
+        departmentInfo = dept;
+      }
+    } catch {}
+  }
+  
+  // Get winter placeholders from department (preferred) or fallback to month details
+  const winterRegularIn = departmentInfo?.winterRegularInPlaceholder ?? ('winterRegularInPlaceholder' in currentMonthDetails ? currentMonthDetails.winterRegularInPlaceholder : undefined);
+  const winterRegularOut = departmentInfo?.winterRegularOutPlaceholder ?? ('winterRegularOutPlaceholder' in currentMonthDetails ? currentMonthDetails.winterRegularOutPlaceholder : undefined);
+  const winterMorningIn = departmentInfo?.winterMorningInPlaceholder ?? ('winterMorningInPlaceholder' in currentMonthDetails ? currentMonthDetails.winterMorningInPlaceholder : undefined);
+  const winterMorningOut = departmentInfo?.winterMorningOutPlaceholder ?? ('winterMorningOutPlaceholder' in currentMonthDetails ? currentMonthDetails.winterMorningOutPlaceholder : undefined);
+  const winterNightIn = departmentInfo?.winterNightInPlaceholder ?? ('winterNightInPlaceholder' in currentMonthDetails ? currentMonthDetails.winterNightInPlaceholder : undefined);
+  const winterNightOut = departmentInfo?.winterNightOutPlaceholder ?? ('winterNightOutPlaceholder' in currentMonthDetails ? currentMonthDetails.winterNightOutPlaceholder : undefined);
 
   if (
     "startDay" in currentMonthDetails &&
@@ -164,13 +223,18 @@ const CalculateOvertime = async (
       totalHours: number;
       totalNightHours: number;
       totalDashainHours: number;
+      totalTiharHours: number;
       isHolidayOvertime: boolean;
       isDashainOvertime: boolean;
+      isTiharOvertime: boolean;
       typeOfHoliday: string | null;
       hasBeforeDutyOvertime: boolean;
       hasAfterDutyOvertime: boolean;
       hasNightOvertime: boolean;
       hasMorningOvertime: boolean;
+      totalChdHours: number;
+      totalOffHours: number;
+      totalRegularOvertimeHours: number;
     }[] = [];
 
     for (let i = 0; i < numberOfDays; i++) {
@@ -181,21 +245,77 @@ const CalculateOvertime = async (
       const isOffDay =
         currentDayName.toLowerCase() === regularOffDay.toLowerCase();
       const isCHD = holidays.includes(dayNumber);
-      const isHoliday = isOffDay || isCHD;
+      
+      // Check if this is a Dashain day
+      const isDashainDay = Boolean('isDashainMonth' in currentMonthDetails && currentMonthDetails.isDashainMonth) && 
+                           Array.isArray(('dashainDays' in currentMonthDetails ? currentMonthDetails.dashainDays : undefined)) &&
+                           (('dashainDays' in currentMonthDetails && currentMonthDetails.dashainDays) ? currentMonthDetails.dashainDays!.includes(dayNumber) : false);
+
+      // Check if this is a Tihar day
+      const isTiharDay = Boolean('isTiharMonth' in currentMonthDetails && currentMonthDetails.isTiharMonth) && 
+                         Array.isArray(('tiharDays' in currentMonthDetails ? currentMonthDetails.tiharDays : undefined)) &&
+                         (('tiharDays' in currentMonthDetails && currentMonthDetails.tiharDays) ? currentMonthDetails.tiharDays!.includes(dayNumber) : false);
+      
+      // Treat Dashain/Tihar days as holidays for overtime calculation purposes
+      const isHoliday = isOffDay || isCHD || isDashainDay || isTiharDay;
       const isNightDuty = nightDutyDays.includes(dayNumber);
       const isMorningShift = morningShiftDays.includes(dayNumber);
 
-      // Check if this is a Dashain day (Ashwin 2082, days 14-17)
-      const isDashainDay = name === "Ashwin" && currentMonthDetails.year === 2082 && 
-                           (dayNumber === 14 || dayNumber === 15 || dayNumber === 16 || dayNumber === 17);
+      // Check if winter applies for this day
+      const isWinterDay = isWinterEnabled && winterStartDay && dayNumber >= winterStartDay;
 
       // Check if next day is off day
       const nextDayIndex = (startDay + i + 1) % 7;
       const nextDayName = dayNames[nextDayIndex];
       const isDayBeforeOff = nextDayName.toLowerCase() === regularOffDay.toLowerCase();
 
-      const dutyStartTime = isNightDuty ? nightDutyStart : (isMorningShift ? morningShiftStart : regularStart);
-      const dutyEndTime = isNightDuty ? (isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(nightDutyEnd) : nightDutyEnd) : (isMorningShift ? (isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(morningShiftEnd) : morningShiftEnd) : (isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(regularEnd) : regularEnd));
+      // Determine type of holiday
+      const typeOfHoliday = isDashainDay 
+        ? "DASHAIN" 
+        : isTiharDay 
+        ? "TIHAR" 
+        : (isOffDay && isCHD 
+          ? "OFF+CHD" 
+          : isOffDay 
+          ? "OFF" 
+          : isCHD 
+          ? "CHD" 
+          : null);
+
+      // Determine duty times based on shift type and winter settings
+      let dutyStartTime: string;
+      let dutyEndTime: string;
+      
+      if (isNightDuty) {
+        if (isWinterDay && winterNightIn && winterNightOut) {
+          dutyStartTime = winterNightIn;
+          dutyEndTime = isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(winterNightOut) : winterNightOut;
+        } else {
+          dutyStartTime = nightDutyStart;
+          dutyEndTime = isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(nightDutyEnd) : nightDutyEnd;
+        }
+      } else if (isMorningShift) {
+        if (isWinterDay && winterMorningIn && winterMorningOut) {
+          dutyStartTime = winterMorningIn;
+          dutyEndTime = isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(winterMorningOut) : winterMorningOut;
+        } else {
+          dutyStartTime = morningShiftStart;
+          dutyEndTime = isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(morningShiftEnd) : morningShiftEnd;
+        }
+      } else {
+        // Regular duty
+        // If day before off day, use regular out time (not winter) and subtract 2 hours
+        if (isDayBeforeOff && !isHoliday) {
+          dutyStartTime = isWinterDay && winterRegularIn ? winterRegularIn : regularStart;
+          dutyEndTime = calculateTwoHoursBefore(regularEnd);
+        } else if (isWinterDay && winterRegularIn && winterRegularOut) {
+          dutyStartTime = winterRegularIn;
+          dutyEndTime = winterRegularOut;
+        } else {
+          dutyStartTime = regularStart;
+          dutyEndTime = regularEnd;
+        }
+      }
 
       if (!record || record.inTime === "NA" || record.outTime === "NA") {
         results.push({
@@ -204,13 +324,18 @@ const CalculateOvertime = async (
           totalHours: 0,
           totalNightHours: 0,
           totalDashainHours: 0,
-          isHolidayOvertime: isHoliday && !isDashainDay,
+          totalTiharHours: 0,
+          isHolidayOvertime: isHoliday && !isDashainDay && !isTiharDay,
           isDashainOvertime: isDashainDay,
-          typeOfHoliday: isDashainDay ? "DASHAIN" : (isOffDay && isCHD ? "OFF+CHD" : isOffDay ? "OFF" : isCHD ? "CHD" : null),
+          isTiharOvertime: isTiharDay,
+          typeOfHoliday: typeOfHoliday,
           hasBeforeDutyOvertime: false,
           hasAfterDutyOvertime: false,
           hasNightOvertime: false,
           hasMorningOvertime: false,
+          totalChdHours: 0,
+          totalOffHours: 0,
+          totalRegularOvertimeHours: 0,
         });
         continue;
       }
@@ -230,40 +355,75 @@ const CalculateOvertime = async (
       let total = 0;
       let nightTotal = 0;
       let dashainTotal = 0;
+      let tiharTotal = 0;
+      let totalChdHours = 0;
+      let totalOffHours = 0;
+      let totalRegularOvertimeHours = 0;
+
       const hasBeforeDutyOvertime = !!overtime.beforeDuty;
       const hasAfterDutyOvertime = !!overtime.afterDuty;
       const hasNightOvertime = !!overtime.night;
       const hasMorningOvertime = !!overtime.morning;
-      const isHolidayOvertime = !!overtime.holiday;
+      const hasHolidayOvertime = !!overtime.holiday;
 
-      // Calculate overtime based on whether it's a Dashain day
+      const beforeDutyHours = hasBeforeDutyOvertime
+        ? calculateDuration(...overtime.beforeDuty!)
+        : 0;
+      const afterDutyHours = hasAfterDutyOvertime
+        ? calculateDuration(...overtime.afterDuty!)
+        : 0;
+      const nightHours = hasNightOvertime
+        ? calculateDuration(...overtime.night!)
+        : 0;
+      const holidayHours = hasHolidayOvertime
+        ? calculateDuration(...overtime.holiday!)
+        : 0;
+
+      // Calculate overtime based on whether it's a Dashain or Tihar day
       if (isDashainDay) {
         // For Dashain days, all overtime goes to Dashain total
-        if (hasBeforeDutyOvertime) {
-          dashainTotal += calculateDuration(...overtime.beforeDuty!);
-        }
-        if (hasAfterDutyOvertime) {
-          dashainTotal += calculateDuration(...overtime.afterDuty!);
-        }
-        if (isHolidayOvertime) {
-          dashainTotal += calculateDuration(...overtime.holiday!);
-        }
-        if (hasNightOvertime) {
-          nightTotal += calculateDuration(...overtime.night!);
-        }
+        dashainTotal += beforeDutyHours + afterDutyHours + holidayHours;
+        nightTotal += nightHours;
+        // For Dashain/Tihar days, treat as CHD days - all hours go to CHD column (G)
+        // Total hours = beforeDuty + afterDuty + holidayHours (all hours worked on the holiday)
+        totalChdHours = beforeDutyHours + afterDutyHours + holidayHours;
+        // No regular overtime hours for Dashain/Tihar days (I column should be 0)
+        totalRegularOvertimeHours = 0;
+        totalOffHours = 0;
+      } else if (isTiharDay) {
+        // For Tihar days, all overtime goes to Tihar total
+        tiharTotal += beforeDutyHours + afterDutyHours + holidayHours;
+        nightTotal += nightHours;
+        // For Dashain/Tihar days, treat as CHD days - all hours go to CHD column (G)
+        // Total hours = beforeDuty + afterDuty + holidayHours (all hours worked on the holiday)
+        totalChdHours = beforeDutyHours + afterDutyHours + holidayHours;
+        // No regular overtime hours for Dashain/Tihar days (I column should be 0)
+        totalRegularOvertimeHours = 0;
+        totalOffHours = 0;
       } else {
-        // For regular days, calculate normally
-        if (hasBeforeDutyOvertime) {
-          total += calculateDuration(...overtime.beforeDuty!);
-        }
-        if (hasAfterDutyOvertime) {
-          total += calculateDuration(...overtime.afterDuty!);
-        }
-        if (isHolidayOvertime) {
-          total += calculateDuration(...overtime.holiday!);
-        }
-        if (hasNightOvertime) {
-          nightTotal += calculateDuration(...overtime.night!);
+        // For non Dashain/Tihar days
+        nightTotal += nightHours;
+
+        if (typeOfHoliday?.includes("CHD") || typeOfHoliday?.includes("OFF")) {
+          // Holiday (CHD or OFF) days: put ALL worked hours into the holiday bucket and ZERO regular
+          const allWorkedOnHoliday = beforeDutyHours + afterDutyHours + holidayHours;
+          totalRegularOvertimeHours = 0;
+          if (typeOfHoliday?.includes("CHD")) {
+            totalChdHours = allWorkedOnHoliday;
+            totalOffHours = 0;
+          } else {
+            // OFF only
+            totalOffHours = allWorkedOnHoliday;
+            totalChdHours = 0;
+          }
+          total += allWorkedOnHoliday;
+        } else {
+          // Pure regular day
+          total += beforeDutyHours + afterDutyHours + holidayHours;
+          // Regular overtime is always before duty + after duty (excluding holiday hours)
+          totalRegularOvertimeHours = beforeDutyHours + afterDutyHours;
+          totalChdHours = 0;
+          totalOffHours = 0;
         }
       }
       // For morning shift, overtime is only before/after the shift, not the main shift window
@@ -275,13 +435,18 @@ const CalculateOvertime = async (
         totalHours: total, // Keep 0.5 hour increments
         totalNightHours: nightTotal, // Keep 0.5 hour increments
         totalDashainHours: dashainTotal, // Keep 0.5 hour increments
-        isHolidayOvertime: isHolidayOvertime && !isDashainDay,
+        totalTiharHours: tiharTotal, // Keep 0.5 hour increments
+        isHolidayOvertime: hasHolidayOvertime && !isDashainDay && !isTiharDay,
         isDashainOvertime: isDashainDay,
-        typeOfHoliday: isDashainDay ? "DASHAIN" : (isOffDay && isCHD ? "OFF+CHD" : isOffDay ? "OFF" : isCHD ? "CHD" : null),
+        isTiharOvertime: isTiharDay,
+        typeOfHoliday: typeOfHoliday,
         hasBeforeDutyOvertime,
         hasAfterDutyOvertime,
         hasNightOvertime,
         hasMorningOvertime,
+        totalChdHours,
+        totalOffHours,
+        totalRegularOvertimeHours,
       });
     }
 
