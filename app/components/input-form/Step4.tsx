@@ -896,20 +896,22 @@ const Step4 = () => {
       return;
     }
 
-    const isItDepartment = selectedDept?.code?.toLowerCase() === "it";
+    const itLikeDepartments = ["it", "lcu"];
+    const usesItLayout = selectedDept?.code
+      ? itLikeDepartments.includes(selectedDept.code.toLowerCase())
+      : false;
 
-    if (isItDepartment) {
-      const monthDetails = await fetchCurrentMonthDetails();
-      if (!monthDetails) {
-        setIsError(true);
-        setResponseMessage("Unable to fetch month details for IT department export.");
-        return;
-      }
-      // Pass department placeholders to populateItWorksheet
+    const monthDetails = await fetchCurrentMonthDetails();
+    if (!monthDetails) {
+      setIsError(true);
+      setResponseMessage("Unable to fetch month details for export.");
+      return;
+    }
+
+    if (usesItLayout) {
+      // Pass department placeholders to populateItWorksheet for IT-like departments
       populateItWorksheet(sheet, overtimeData, monthDetails, selectedDept);
     } else {
-      // Fetch month details for GRSD as well to validate Dashain/Tihar days
-      const monthDetails = await fetchCurrentMonthDetails();
       populateDefaultWorksheet(sheet, overtimeData, monthDetails);
     }
 
