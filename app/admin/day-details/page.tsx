@@ -395,31 +395,34 @@ export default function AdminDayDetailsPage() {
             </div>
           </div>
 
-          <h3 className="font-medium mt-6 mb-3">Winter Placeholders</h3>
+          <h3 className="font-medium mt-6 mb-3">Winter Offsets (hours)</h3>
+          <p className="text-sm text-gray-500 mb-4">
+            Positive values delay the start time or bring the end time earlier. Negative values do the opposite.
+          </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm mb-1">Winter Regular In</label>
-              <input className="input-field" value={form.winterRegularInPlaceholder || ''} onChange={e=>setForm({...form,winterRegularInPlaceholder:e.target.value})} placeholder="HH:MM" />
+              <label className="block text-sm mb-1">Regular In Offset</label>
+              <input type="number" step="0.25" className="input-field" value={form.winterRegularInPlaceholder || ''} onChange={e=>setForm({...form,winterRegularInPlaceholder:e.target.value})} placeholder="e.g. 1" />
             </div>
             <div>
-              <label className="block text-sm mb-1">Winter Regular Out</label>
-              <input className="input-field" value={form.winterRegularOutPlaceholder || ''} onChange={e=>setForm({...form,winterRegularOutPlaceholder:e.target.value})} placeholder="HH:MM" />
+              <label className="block text-sm mb-1">Regular Out Offset</label>
+              <input type="number" step="0.25" className="input-field" value={form.winterRegularOutPlaceholder || ''} onChange={e=>setForm({...form,winterRegularOutPlaceholder:e.target.value})} placeholder="e.g. 1" />
             </div>
             <div>
-              <label className="block text-sm mb-1">Winter Morning In</label>
-              <input className="input-field" value={form.winterMorningInPlaceholder || ''} onChange={e=>setForm({...form,winterMorningInPlaceholder:e.target.value})} placeholder="HH:MM" />
+              <label className="block text-sm mb-1">Morning In Offset</label>
+              <input type="number" step="0.25" className="input-field" value={form.winterMorningInPlaceholder || ''} onChange={e=>setForm({...form,winterMorningInPlaceholder:e.target.value})} placeholder="e.g. 1" />
             </div>
             <div>
-              <label className="block text-sm mb-1">Winter Morning Out</label>
-              <input className="input-field" value={form.winterMorningOutPlaceholder || ''} onChange={e=>setForm({...form,winterMorningOutPlaceholder:e.target.value})} placeholder="HH:MM" />
+              <label className="block text-sm mb-1">Morning Out Offset</label>
+              <input type="number" step="0.25" className="input-field" value={form.winterMorningOutPlaceholder || ''} onChange={e=>setForm({...form,winterMorningOutPlaceholder:e.target.value})} placeholder="e.g. 1" />
             </div>
             <div>
-              <label className="block text-sm mb-1">Winter Night In</label>
-              <input className="input-field" value={form.winterNightInPlaceholder || ''} onChange={e=>setForm({...form,winterNightInPlaceholder:e.target.value})} placeholder="HH:MM" />
+              <label className="block text-sm mb-1">Night In Offset</label>
+              <input type="number" step="0.25" className="input-field" value={form.winterNightInPlaceholder || ''} onChange={e=>setForm({...form,winterNightInPlaceholder:e.target.value})} placeholder="e.g. 1" />
             </div>
             <div>
-              <label className="block text-sm mb-1">Winter Night Out</label>
-              <input className="input-field" value={form.winterNightOutPlaceholder || ''} onChange={e=>setForm({...form,winterNightOutPlaceholder:e.target.value})} placeholder="HH:MM" />
+              <label className="block text-sm mb-1">Night Out Offset</label>
+              <input type="number" step="0.25" className="input-field" value={form.winterNightOutPlaceholder || ''} onChange={e=>setForm({...form,winterNightOutPlaceholder:e.target.value})} placeholder="e.g. 1" />
             </div>
           </div>
         </div>

@@ -6,6 +6,10 @@ import { useState, useEffect } from "react";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import dayjs from "dayjs";
+import {
+  applyWinterAdjustments,
+  parseWinterAdjustment,
+} from "@/app/lib/helpers/winterTimeAdjustments";
 
 const formatTotalHours = (hours: number): string => {
   if (hours === 0) return "";
@@ -345,13 +349,40 @@ const Step4 = () => {
     const isWinterEnabled = Boolean(monthDetails?.isWinter ?? false);
     const winterStartDay = Number(monthDetails?.winterStartDay ?? null);
 
-    // Get placeholders from department (preferred) or fallback to monthDetails
-    const winterRegularIn = departmentInfo?.winterRegularInPlaceholder ?? monthDetails?.winterRegularInPlaceholder ?? null;
-    const winterRegularOut = departmentInfo?.winterRegularOutPlaceholder ?? monthDetails?.winterRegularOutPlaceholder ?? null;
-    const winterMorningIn = departmentInfo?.winterMorningInPlaceholder ?? monthDetails?.winterMorningInPlaceholder ?? null;
-    const winterMorningOut = departmentInfo?.winterMorningOutPlaceholder ?? monthDetails?.winterMorningOutPlaceholder ?? null;
-    const winterNightIn = departmentInfo?.winterNightInPlaceholder ?? monthDetails?.winterNightInPlaceholder ?? null;
-    const winterNightOut = departmentInfo?.winterNightOutPlaceholder ?? monthDetails?.winterNightOutPlaceholder ?? null;
+    const resolveAdjustment = (
+      departmentValue?: string | null,
+      monthValue?: string | null
+    ) =>
+      parseWinterAdjustment(
+        departmentValue ??
+          (typeof monthValue === "string" ? monthValue : undefined)
+      );
+
+    // Get adjustments from department (preferred) or fallback to monthDetails
+    const winterRegularInAdjustment = resolveAdjustment(
+      departmentInfo?.winterRegularInPlaceholder,
+      monthDetails?.winterRegularInPlaceholder ?? null
+    );
+    const winterRegularOutAdjustment = resolveAdjustment(
+      departmentInfo?.winterRegularOutPlaceholder,
+      monthDetails?.winterRegularOutPlaceholder ?? null
+    );
+    const winterMorningInAdjustment = resolveAdjustment(
+      departmentInfo?.winterMorningInPlaceholder,
+      monthDetails?.winterMorningInPlaceholder ?? null
+    );
+    const winterMorningOutAdjustment = resolveAdjustment(
+      departmentInfo?.winterMorningOutPlaceholder,
+      monthDetails?.winterMorningOutPlaceholder ?? null
+    );
+    const winterNightInAdjustment = resolveAdjustment(
+      departmentInfo?.winterNightInPlaceholder,
+      monthDetails?.winterNightInPlaceholder ?? null
+    );
+    const winterNightOutAdjustment = resolveAdjustment(
+      departmentInfo?.winterNightOutPlaceholder,
+      monthDetails?.winterNightOutPlaceholder ?? null
+    );
 
     const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -565,54 +596,77 @@ const Step4 = () => {
       const isOffDayEntry = entry?.typeOfHoliday?.includes("OFF") || entry?.typeOfHoliday === "CHD" || entry?.isHolidayOvertime;
 
       // Check if winter applies for this day
-      const isWinterDay = isWinterEnabled && winterStartDay && dayNumber >= winterStartDay;
+      const isWinterDay = Boolean(
+        isWinterEnabled && winterStartDay && dayNumber >= winterStartDay
+      );
 
       // Determine shift type for the day
       const isNightDutyDay = Array.isArray(formData.nightDutyDays) && formData.nightDutyDays.includes(dayNumber);
       const isMorningShiftDay = Array.isArray(formData.morningShiftDays) && formData.morningShiftDays.includes(dayNumber);
 
-      // Determine the duty start time (D column)
-      let dutyStartTime = formData.dutyStartTime ?? "";
-      if (isNightDutyDay) {
-        dutyStartTime = isWinterDay && isValidTimeValue(winterNightIn) ? (winterNightIn as string) : (formData.nightDutyStartTime ?? dutyStartTime);
-      } else if (isMorningShiftDay) {
-        dutyStartTime = isWinterDay && isValidTimeValue(winterMorningIn) ? (winterMorningIn as string) : (formData.morningShiftStartTime ?? dutyStartTime);
-      } else if (isWinterDay && winterRegularIn) {
-        dutyStartTime = winterRegularIn;
-      }
-      currentRow.getCell("D").value = dutyStartTime;
+      const allowWinterOutAdjustment =
+        !(isDayBeforeOff && !isHoliday && !isOffDayEntry);
 
-      // Determine the duty end time (E column)
+      const adjustShiftTimes = (
+        baseStart: string,
+        baseEnd: string,
+        inAdjustment: ReturnType<typeof parseWinterAdjustment> | null,
+        outAdjustment: ReturnType<typeof parseWinterAdjustment> | null,
+        nightShift = false
+      ) =>
+        applyWinterAdjustments({
+          baseStart,
+          baseEnd,
+          inAdjustment: inAdjustment ?? undefined,
+          outAdjustment: outAdjustment ?? undefined,
+          isWinterDay,
+          allowOutAdjustment: allowWinterOutAdjustment,
+          baseEndNextDay: nightShift,
+        });
+
+      let dutyStartTime = formData.dutyStartTime ?? "";
       let dutyEndTime = formData.dutyEndTime ?? "";
 
       if (isNightDutyDay) {
-        // Night shift end
-        const baseEnd = isWinterDay && isValidTimeValue(winterNightOut) ? (winterNightOut as string) : (formData.nightDutyEndTime ?? dutyEndTime);
-        if (isDayBeforeOff && !isHoliday && !isOffDayEntry && baseEnd) {
-          dutyEndTime = calculateTwoHoursBefore(baseEnd);
-        } else {
-          dutyEndTime = baseEnd;
-        }
-      } else if (isMorningShiftDay) {
-        // Morning shift end
-        const baseEnd = isWinterDay && isValidTimeValue(winterMorningOut) ? (winterMorningOut as string) : (formData.morningShiftEndTime ?? dutyEndTime);
-        if (isDayBeforeOff && !isHoliday && !isOffDayEntry && baseEnd) {
-          dutyEndTime = calculateTwoHoursBefore(baseEnd);
-        } else {
-          dutyEndTime = baseEnd;
-        }
-      } else {
-        // Regular duty
-        // If day before off day and not a holiday, use regular out time (not winter) and subtract 2 hours
+        const adjusted = adjustShiftTimes(
+          formData.nightDutyStartTime ?? dutyStartTime,
+          formData.nightDutyEndTime ?? dutyEndTime,
+          winterNightInAdjustment,
+          winterNightOutAdjustment,
+          true
+        );
+        dutyStartTime = adjusted.start;
+        dutyEndTime = adjusted.end;
         if (isDayBeforeOff && !isHoliday && !isOffDayEntry && dutyEndTime) {
           dutyEndTime = calculateTwoHoursBefore(dutyEndTime);
         }
-        // Otherwise, if it's a winter day, use winter out time
-        else if (isWinterDay && winterRegularOut) {
-          dutyEndTime = winterRegularOut;
+      } else if (isMorningShiftDay) {
+        const adjusted = adjustShiftTimes(
+          formData.morningShiftStartTime ?? dutyStartTime,
+          formData.morningShiftEndTime ?? dutyEndTime,
+          winterMorningInAdjustment,
+          winterMorningOutAdjustment
+        );
+        dutyStartTime = adjusted.start;
+        dutyEndTime = adjusted.end;
+        if (isDayBeforeOff && !isHoliday && !isOffDayEntry && dutyEndTime) {
+          dutyEndTime = calculateTwoHoursBefore(dutyEndTime);
+        }
+      } else {
+        const adjusted = adjustShiftTimes(
+          dutyStartTime,
+          dutyEndTime,
+          winterRegularInAdjustment,
+          winterRegularOutAdjustment
+        );
+        dutyStartTime = adjusted.start;
+        dutyEndTime = adjusted.end;
+        if (isDayBeforeOff && !isHoliday && !isOffDayEntry && dutyEndTime) {
+          dutyEndTime = calculateTwoHoursBefore(dutyEndTime);
         }
       }
 
+      currentRow.getCell("D").value = dutyStartTime;
       currentRow.getCell("E").value = dutyEndTime;
 
       // Fill after duty time (F column) if:

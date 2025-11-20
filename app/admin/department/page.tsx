@@ -185,60 +185,73 @@ export default function DepartmentPage() {
           </div>
           
           <div className="mt-4">
-            <h4 className="font-medium mb-2 text-sm">Winter Placeholders</h4>
+            <h4 className="font-medium mb-2 text-sm">Winter Offsets (hours)</h4>
+            <p className="text-xs text-gray-500 mb-3">Use positive numbers to push start times later or bring end times earlier.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm mb-1">Winter Regular In</label>
+                <label className="block text-sm mb-1">Regular In Offset</label>
                 <input 
+                  type="number"
+                  step="0.25"
                   className="input-field" 
                   value={form.winterRegularInPlaceholder ?? ''} 
                   onChange={e => setForm({ ...form, winterRegularInPlaceholder: e.target.value })}
-                  placeholder="e.g. 10:00"
+                  placeholder="e.g. 1"
                 />
               </div>
               <div>
-                <label className="block text-sm mb-1">Winter Regular Out</label>
+                <label className="block text-sm mb-1">Regular Out Offset</label>
                 <input 
+                  type="number"
+                  step="0.25"
                   className="input-field" 
                   value={form.winterRegularOutPlaceholder ?? ''} 
                   onChange={e => setForm({ ...form, winterRegularOutPlaceholder: e.target.value })}
-                  placeholder="e.g. 16:00"
+                  placeholder="e.g. 1"
                 />
               </div>
               <div>
-                <label className="block text-sm mb-1">Winter Morning In</label>
+                <label className="block text-sm mb-1">Morning In Offset</label>
                 <input 
+                  type="number"
+                  step="0.25"
                   className="input-field" 
                   value={form.winterMorningInPlaceholder ?? ''} 
                   onChange={e => setForm({ ...form, winterMorningInPlaceholder: e.target.value })}
-                  placeholder="e.g. 05:30"
+                  placeholder="e.g. 1"
                 />
               </div>
               <div>
-                <label className="block text-sm mb-1">Winter Morning Out</label>
+                <label className="block text-sm mb-1">Morning Out Offset</label>
                 <input 
+                  type="number"
+                  step="0.25"
                   className="input-field" 
                   value={form.winterMorningOutPlaceholder ?? ''} 
                   onChange={e => setForm({ ...form, winterMorningOutPlaceholder: e.target.value })}
-                  placeholder="e.g. 12:30"
+                  placeholder="e.g. 1"
                 />
               </div>
               <div>
-                <label className="block text-sm mb-1">Winter Night In</label>
+                <label className="block text-sm mb-1">Night In Offset</label>
                 <input 
+                  type="number"
+                  step="0.25"
                   className="input-field" 
                   value={form.winterNightInPlaceholder ?? ''} 
                   onChange={e => setForm({ ...form, winterNightInPlaceholder: e.target.value })}
-                  placeholder="e.g. 17:00"
+                  placeholder="e.g. 1"
                 />
               </div>
               <div>
-                <label className="block text-sm mb-1">Winter Night Out</label>
+                <label className="block text-sm mb-1">Night Out Offset</label>
                 <input 
+                  type="number"
+                  step="0.25"
                   className="input-field" 
                   value={form.winterNightOutPlaceholder ?? ''} 
                   onChange={e => setForm({ ...form, winterNightOutPlaceholder: e.target.value })}
-                  placeholder="e.g. 00:00"
+                  placeholder="e.g. 1"
                 />
               </div>
             </div>
