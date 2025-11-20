@@ -1,6 +1,11 @@
 import getCurrentMonthDetails from "@/app/services/DayDetails";
 import { AttendanceRecord } from "@/app/types/InputFormType";
 import dayjs from "dayjs";
+import {
+  adjustTimeByHours,
+  applyWinterAdjustments,
+  parseWinterAdjustment,
+} from "@/app/lib/helpers/winterTimeAdjustments";
 
 const dayNames = [
   "Sunday",
@@ -27,13 +32,13 @@ function formatTime(time: dayjs.Dayjs) {
 
 function calculateDuration(startStr: string, endStr: string): number {
   const start = parseTime(startStr);
-  const end = parseTime(endStr, endStr < startStr ? 1 : 0);
+  let end = parseTime(endStr);
+  if (end.isBefore(start) || end.isSame(start)) {
+    end = end.add(1, "day");
+  }
   const totalMinutes = end.diff(start, "minute");
-
-  // Round minutes to nearest 30 minutes and return hours as decimal (0.5 increments)
   const roundedToNearest30 = Math.round(totalMinutes / 30) * 30;
-  const totalHours = roundedToNearest30 / 60;
-  return totalHours;
+  return roundedToNearest30 / 60;
 }
 
 function getDayName(startDay: number, dayIndex: number) {
@@ -41,10 +46,7 @@ function getDayName(startDay: number, dayIndex: number) {
 }
 
 function calculateTwoHoursBefore(time: string): string {
-  const [hours, minutes] = time.split(":").map(Number);
-  const date = dayjs().hour(hours).minute(minutes);
-  const twoHoursBefore = date.subtract(2, "hour");
-  return twoHoursBefore.format("HH:mm");
+  return adjustTimeByHours(time, -2);
 }
 
 function getOvertimeIntervals(
@@ -76,7 +78,11 @@ function getOvertimeIntervals(
   const dutyEndTime = parseTime(dutyEnd);
   const midnight = dayjs().startOf("day").add(1, "day");
   const nightStartTime = parseTime(nightDutyStart);
-  const nightEndTime = parseTime(nightDutyEnd);
+  let nightEndTime = parseTime(nightDutyEnd);
+  const baseNightEnd = nightEndTime;
+  if (nightEndTime.isBefore(nightStartTime) || nightEndTime.isSame(nightStartTime)) {
+    nightEndTime = nightEndTime.add(1, "day");
+  }
 
   if (isHoliday) {
     // For holidays, if inTime is before duty start time, calculate beforeDuty separately
@@ -102,15 +108,60 @@ function getOvertimeIntervals(
     return result;
   }
 
+  const mergeNightSegment = (segmentStart: dayjs.Dayjs, segmentEnd: dayjs.Dayjs) => {
+    if (segmentEnd.isBefore(segmentStart) || segmentEnd.isSame(segmentStart)) {
+      segmentEnd = segmentEnd.add(1, "day");
+    }
+
+    if (!result.night) {
+      result.night = [formatTime(segmentStart), formatTime(segmentEnd)];
+    } else {
+      const existingStart = parseTime(result.night[0]);
+      let existingEnd = parseTime(result.night[1]);
+      if (existingEnd.isBefore(existingStart) || existingEnd.isSame(existingStart)) {
+        existingEnd = existingEnd.add(1, "day");
+      }
+      const newStart = segmentStart.isBefore(existingStart)
+        ? segmentStart
+        : existingStart;
+      const newEnd = segmentEnd.isAfter(existingEnd)
+        ? segmentEnd
+        : existingEnd;
+      result.night = [formatTime(newStart), formatTime(newEnd)];
+    }
+  };
+
   if (isNight) {
     if (start.isBefore(nightStartTime)) {
       result.beforeDuty = [formatTime(start), formatTime(nightStartTime)];
     }
+
     if (end.isAfter(midnight)) {
-      result.afterDuty = [formatTime(nightEndTime), formatTime(midnight)];
-      result.night = [formatTime(midnight), formatTime(end)];
-    } else if (end.isAfter(nightEndTime)) {
-      result.afterDuty = [formatTime(nightEndTime), formatTime(end)];
+      const nightSegmentStart = start.isAfter(nightStartTime)
+        ? start
+        : nightStartTime;
+      const clampedNightStart = nightSegmentStart.isBefore(midnight)
+        ? midnight
+        : nightSegmentStart;
+
+      let nightSegmentEnd: dayjs.Dayjs;
+      if (end.isAfter(nightEndTime)) {
+        nightSegmentEnd = nightEndTime;
+      } else if (end.isAfter(midnight)) {
+        nightSegmentEnd = end;
+      } else {
+        nightSegmentEnd = end;
+      }
+
+      if (nightSegmentEnd.isAfter(clampedNightStart)) {
+        mergeNightSegment(clampedNightStart, nightSegmentEnd);
+      }
+
+      if (end.isAfter(nightSegmentEnd)) {
+        result.afterDuty = [formatTime(nightSegmentEnd), formatTime(end)];
+      }
+    } else if (end.isAfter(baseNightEnd)) {
+      result.afterDuty = [formatTime(baseNightEnd), formatTime(end)];
     }
   } else if (isMorning) {
     // For regular morning shift, only time outside the morning window is overtime
@@ -131,7 +182,23 @@ function getOvertimeIntervals(
       result.afterDuty = [formatTime(dutyEndTime), formatTime(end)];
     } else if (end.isAfter(midnight)) {
       result.afterDuty = [formatTime(dutyEndTime), formatTime(midnight)];
-      result.night = [formatTime(midnight), formatTime(end)];
+      mergeNightSegment(midnight, end);
+    }
+  }
+
+  if (result.afterDuty) {
+    const afterStart = parseTime(result.afterDuty[0]);
+    let afterEnd = parseTime(result.afterDuty[1]);
+    if (afterEnd.isBefore(afterStart) || afterEnd.isSame(afterStart)) {
+      afterEnd = afterEnd.add(1, "day");
+    }
+
+    if (afterStart.isAfter(midnight) || afterStart.isSame(midnight)) {
+      mergeNightSegment(afterStart, afterEnd);
+      delete result.afterDuty;
+    } else if (afterEnd.isAfter(midnight)) {
+      result.afterDuty[1] = formatTime(midnight);
+      mergeNightSegment(midnight, afterEnd);
     }
   }
 
@@ -197,12 +264,51 @@ const CalculateOvertime = async (
   }
   
   // Get winter placeholders from department (preferred) or fallback to month details
-  const winterRegularIn = departmentInfo?.winterRegularInPlaceholder ?? ('winterRegularInPlaceholder' in currentMonthDetails ? currentMonthDetails.winterRegularInPlaceholder : undefined);
-  const winterRegularOut = departmentInfo?.winterRegularOutPlaceholder ?? ('winterRegularOutPlaceholder' in currentMonthDetails ? currentMonthDetails.winterRegularOutPlaceholder : undefined);
-  const winterMorningIn = departmentInfo?.winterMorningInPlaceholder ?? ('winterMorningInPlaceholder' in currentMonthDetails ? currentMonthDetails.winterMorningInPlaceholder : undefined);
-  const winterMorningOut = departmentInfo?.winterMorningOutPlaceholder ?? ('winterMorningOutPlaceholder' in currentMonthDetails ? currentMonthDetails.winterMorningOutPlaceholder : undefined);
-  const winterNightIn = departmentInfo?.winterNightInPlaceholder ?? ('winterNightInPlaceholder' in currentMonthDetails ? currentMonthDetails.winterNightInPlaceholder : undefined);
-  const winterNightOut = departmentInfo?.winterNightOutPlaceholder ?? ('winterNightOutPlaceholder' in currentMonthDetails ? currentMonthDetails.winterNightOutPlaceholder : undefined);
+  const resolveAdjustment = (
+    departmentValue?: string | null,
+    monthValue?: string | null
+  ) =>
+    parseWinterAdjustment(
+      departmentValue ??
+        (typeof monthValue === "string" ? monthValue : undefined)
+    );
+
+  const winterRegularInAdjustment = resolveAdjustment(
+    departmentInfo?.winterRegularInPlaceholder,
+    "winterRegularInPlaceholder" in currentMonthDetails
+      ? currentMonthDetails.winterRegularInPlaceholder
+      : undefined
+  );
+  const winterRegularOutAdjustment = resolveAdjustment(
+    departmentInfo?.winterRegularOutPlaceholder,
+    "winterRegularOutPlaceholder" in currentMonthDetails
+      ? currentMonthDetails.winterRegularOutPlaceholder
+      : undefined
+  );
+  const winterMorningInAdjustment = resolveAdjustment(
+    departmentInfo?.winterMorningInPlaceholder,
+    "winterMorningInPlaceholder" in currentMonthDetails
+      ? currentMonthDetails.winterMorningInPlaceholder
+      : undefined
+  );
+  const winterMorningOutAdjustment = resolveAdjustment(
+    departmentInfo?.winterMorningOutPlaceholder,
+    "winterMorningOutPlaceholder" in currentMonthDetails
+      ? currentMonthDetails.winterMorningOutPlaceholder
+      : undefined
+  );
+  const winterNightInAdjustment = resolveAdjustment(
+    departmentInfo?.winterNightInPlaceholder,
+    "winterNightInPlaceholder" in currentMonthDetails
+      ? currentMonthDetails.winterNightInPlaceholder
+      : undefined
+  );
+  const winterNightOutAdjustment = resolveAdjustment(
+    departmentInfo?.winterNightOutPlaceholder,
+    "winterNightOutPlaceholder" in currentMonthDetails
+      ? currentMonthDetails.winterNightOutPlaceholder
+      : undefined
+  );
 
   if (
     "startDay" in currentMonthDetails &&
@@ -262,7 +368,9 @@ const CalculateOvertime = async (
       const isMorningShift = morningShiftDays.includes(dayNumber);
 
       // Check if winter applies for this day
-      const isWinterDay = isWinterEnabled && winterStartDay && dayNumber >= winterStartDay;
+      const isWinterDay = Boolean(
+        isWinterEnabled && winterStartDay && dayNumber >= winterStartDay
+      );
 
       // Check if next day is off day
       const nextDayIndex = (startDay + i + 1) % 7;
@@ -286,34 +394,50 @@ const CalculateOvertime = async (
       let dutyStartTime: string;
       let dutyEndTime: string;
       
+      const allowWinterOutOffset = !(isDayBeforeOff && !isHoliday);
+
       if (isNightDuty) {
-        if (isWinterDay && winterNightIn && winterNightOut) {
-          dutyStartTime = winterNightIn;
-          dutyEndTime = isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(winterNightOut) : winterNightOut;
-        } else {
-          dutyStartTime = nightDutyStart;
-          dutyEndTime = isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(nightDutyEnd) : nightDutyEnd;
+        const adjusted = applyWinterAdjustments({
+          baseStart: nightDutyStart,
+          baseEnd: nightDutyEnd,
+          inAdjustment: winterNightInAdjustment ?? undefined,
+          outAdjustment: winterNightOutAdjustment ?? undefined,
+          isWinterDay,
+          allowOutAdjustment: allowWinterOutOffset,
+          baseEndNextDay: true,
+        });
+        dutyStartTime = adjusted.start;
+        dutyEndTime = adjusted.end;
+        if (isDayBeforeOff && !isHoliday) {
+          dutyEndTime = calculateTwoHoursBefore(dutyEndTime);
         }
       } else if (isMorningShift) {
-        if (isWinterDay && winterMorningIn && winterMorningOut) {
-          dutyStartTime = winterMorningIn;
-          dutyEndTime = isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(winterMorningOut) : winterMorningOut;
-        } else {
-          dutyStartTime = morningShiftStart;
-          dutyEndTime = isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(morningShiftEnd) : morningShiftEnd;
+        const adjusted = applyWinterAdjustments({
+          baseStart: morningShiftStart,
+          baseEnd: morningShiftEnd,
+          inAdjustment: winterMorningInAdjustment ?? undefined,
+          outAdjustment: winterMorningOutAdjustment ?? undefined,
+          isWinterDay,
+          allowOutAdjustment: allowWinterOutOffset,
+        });
+        dutyStartTime = adjusted.start;
+        dutyEndTime = adjusted.end;
+        if (isDayBeforeOff && !isHoliday) {
+          dutyEndTime = calculateTwoHoursBefore(dutyEndTime);
         }
       } else {
-        // Regular duty
-        // If day before off day, use regular out time (not winter) and subtract 2 hours
+        const adjusted = applyWinterAdjustments({
+          baseStart: regularStart,
+          baseEnd: regularEnd,
+          inAdjustment: winterRegularInAdjustment ?? undefined,
+          outAdjustment: winterRegularOutAdjustment ?? undefined,
+          isWinterDay,
+          allowOutAdjustment: allowWinterOutOffset,
+        });
+        dutyStartTime = adjusted.start;
+        dutyEndTime = adjusted.end;
         if (isDayBeforeOff && !isHoliday) {
-          dutyStartTime = isWinterDay && winterRegularIn ? winterRegularIn : regularStart;
-          dutyEndTime = calculateTwoHoursBefore(regularEnd);
-        } else if (isWinterDay && winterRegularIn && winterRegularOut) {
-          dutyStartTime = winterRegularIn;
-          dutyEndTime = winterRegularOut;
-        } else {
-          dutyStartTime = regularStart;
-          dutyEndTime = regularEnd;
+          dutyEndTime = calculateTwoHoursBefore(dutyEndTime);
         }
       }
 
