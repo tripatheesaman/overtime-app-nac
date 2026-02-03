@@ -23,13 +23,13 @@ export async function GET(req: NextRequest) {
       }
       
       // Fetch global winter settings
-      const settings = await prisma.$queryRawUnsafe<Array<{ isWinter: number; winterStartDay: number | null }>>(
-        'SELECT isWinter, winterStartDay FROM settings WHERE id = 1 LIMIT 1'
+      const settings = await prisma.$queryRawUnsafe<Array<{ isWinter: number; winterStartDay: number | null; winterEndDay: number | null }>>(
+        'SELECT isWinter, winterStartDay, winterEndDay FROM settings WHERE id = 1 LIMIT 1'
       );
       
       const winterSettings = settings && settings.length > 0 
-        ? { isWinter: Boolean(settings[0].isWinter), winterStartDay: settings[0].winterStartDay }
-        : { isWinter: false, winterStartDay: null };
+        ? { isWinter: Boolean(settings[0].isWinter), winterStartDay: settings[0].winterStartDay, winterEndDay: settings[0].winterEndDay }
+        : { isWinter: false, winterStartDay: null, winterEndDay: null };
       
       return NextResponse.json({ 
         success: true, 

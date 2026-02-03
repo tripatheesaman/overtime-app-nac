@@ -42,6 +42,7 @@ export default function AdminDayDetailsPage() {
   const [rows, setRows] = useState<DayDetailsRow[]>([])
   const [isWinter, setIsWinter] = useState(false)
   const [winterStartDay, setWinterStartDay] = useState<number | null>(null)
+  const [winterEndDay, setWinterEndDay] = useState<number | null>(null)
 
   const emptyForm: DayDetailsRow = useMemo(() => ({
     name: '',
@@ -92,6 +93,7 @@ export default function AdminDayDetailsPage() {
       if (data.success) {
         setIsWinter(data.data.isWinter || false)
         setWinterStartDay(data.data.winterStartDay || null)
+        setWinterEndDay(data.data.winterEndDay || null)
       }
     } catch {}
   }
@@ -235,7 +237,7 @@ export default function AdminDayDetailsPage() {
       const res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isWinter, winterStartDay }),
+        body: JSON.stringify({ isWinter, winterStartDay, winterEndDay }),
       })
       const data = await res.json()
       if (!data.success) throw new Error(data.error || 'Failed')
@@ -294,17 +296,31 @@ export default function AdminDayDetailsPage() {
             <span>Enable Winter Mode</span>
           </label>
           {isWinter && (
-            <div>
-              <label className="block text-sm mb-1">Winter Start Day (from this day onwards, winter placeholders apply)</label>
-              <input
-                type="number"
-                min={1}
-                max={31}
-                value={winterStartDay || ''}
-                onChange={e => setWinterStartDay(e.target.value ? Number(e.target.value) : null)}
-                className="input-field w-32"
-                placeholder="e.g. 15"
-              />
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm mb-1">Winter Start Day (from this day onwards, winter placeholders apply)</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={31}
+                  value={winterStartDay || ''}
+                  onChange={e => setWinterStartDay(e.target.value ? Number(e.target.value) : null)}
+                  className="input-field w-32"
+                  placeholder="e.g. 15"
+                />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Winter End Day (winter placeholders no longer apply after this day)</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={31}
+                  value={winterEndDay || ''}
+                  onChange={e => setWinterEndDay(e.target.value ? Number(e.target.value) : null)}
+                  className="input-field w-32"
+                  placeholder="e.g. 28"
+                />
+              </div>
             </div>
           )}
           <button className="btn-primary" onClick={onSaveWinterSettings} disabled={loading}>Save Winter Settings</button>
