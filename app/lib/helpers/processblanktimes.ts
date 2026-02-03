@@ -57,13 +57,15 @@ const ProcessBlankTimes = async (
   // Fetch global winter settings
   let isWinterEnabled = false;
   let winterStartDay: number | null = null;
+  let winterEndDay: number | null = null;
   try {
-    const settings = await prisma.$queryRawUnsafe<Array<{ isWinter: number; winterStartDay: number | null }>>(
-      'SELECT isWinter, winterStartDay FROM settings WHERE id = 1 LIMIT 1'
+    const settings = await prisma.$queryRawUnsafe<Array<{ isWinter: number; winterStartDay: number | null; winterEndDay: number | null }>>(
+      'SELECT isWinter, winterStartDay, winterEndDay FROM settings WHERE id = 1 LIMIT 1'
     );
     if (settings && settings.length > 0) {
       isWinterEnabled = Boolean(settings[0].isWinter);
       winterStartDay = settings[0].winterStartDay;
+      winterEndDay = settings[0].winterEndDay;
     }
   } catch {}
 
@@ -101,7 +103,10 @@ const ProcessBlankTimes = async (
 
     // Check if winter applies for this day
     const isWinterDay = Boolean(
-      isWinterEnabled && winterStartDay && dayOfMonth >= winterStartDay
+      isWinterEnabled && 
+      winterStartDay && 
+      dayOfMonth >= winterStartDay &&
+      (!winterEndDay || dayOfMonth <= winterEndDay)
     );
 
     const nextDayIndex = (startDay + index + 1) % 7;

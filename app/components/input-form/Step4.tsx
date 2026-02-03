@@ -348,6 +348,7 @@ const Step4 = () => {
     const holidays = Array.isArray(monthDetails?.holidays) ? monthDetails.holidays : [];
     const isWinterEnabled = Boolean(monthDetails?.isWinter ?? false);
     const winterStartDay = Number(monthDetails?.winterStartDay ?? null);
+    const winterEndDay = Number(monthDetails?.winterEndDay ?? null);
 
     const resolveAdjustment = (
       departmentValue?: string | null,
@@ -597,7 +598,10 @@ const Step4 = () => {
 
       // Check if winter applies for this day
       const isWinterDay = Boolean(
-        isWinterEnabled && winterStartDay && dayNumber >= winterStartDay
+        isWinterEnabled && 
+        winterStartDay && 
+        dayNumber >= winterStartDay &&
+        (!winterEndDay || dayNumber <= winterEndDay)
       );
 
       // Determine shift type for the day

@@ -7,87 +7,92 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model OverTimeDetails{
-  id    Int @id @default(autoincrement())
-  name  String
-  designation String
-  staffid String
-  totalovertimehours  Int
-  nightovertime Int
-  beforedutyhours Int
-  afterdutyhours  Int
-  numberofoddshifts Int
-  holidayhours  Int
-  monthname  String
-  regularoffday String
-  regulardutyhoursfrom  String
-  regulardutyhoursto  String
-  attendancedata  Json
-  createdAt DateTime @default(now())
-  departmentId Int
-  department Department @relation(fields: [departmentId], references: [id])
+model OverTimeDetails {
+  id                   Int        @id @default(autoincrement())
+  name                 String
+  designation          String
+  staffid              String
+  totalovertimehours   Int
+  nightovertime        Int
+  beforedutyhours      Int
+  afterdutyhours       Int
+  numberofoddshifts    Int
+  holidayhours         Int
+  monthname            String
+  regularoffday        String
+  regulardutyhoursfrom String
+  regulardutyhoursto   String
+  attendancedata       Json
+  createdAt            DateTime   @default(now())
+  departmentId         Int
+  department           Department @relation(fields: [departmentId], references: [id])
+
   @@index([departmentId])
   @@map("overtimedetails")
 }
 
-model DayDetails{
-  id  Int @id @default(autoincrement())
-  name  String
-  startingday Int
-  numberofdays  Int
-  holidays Json
-  year  Int
-  monthNumber Int
-  isActiveMonth Boolean @default(false)
+model DayDetails {
+  id                          Int     @id @default(autoincrement())
+  name                        String
+  startingday                 Int
+  numberofdays                Int
+  holidays                    Json
+  year                        Int
+  monthNumber                 Int
+  isActiveMonth               Boolean @default(false)
   // Optional festival metadata (managed via admin dashboard)
-  isDashainMonth Boolean @default(false)
-  dashainDays Json?
-  isTiharMonth Boolean @default(false)
-  tiharDays Json?
+  isDashainMonth              Boolean @default(false)
+  dashainDays                 Json?
+  isTiharMonth                Boolean @default(false)
+  tiharDays                   Json?
   // Editable placeholders for shift times
-  regularInPlaceholder String?
-  regularOutPlaceholder String?
-  morningInPlaceholder String?
-  morningOutPlaceholder String?
-  nightInPlaceholder String?
-  nightOutPlaceholder String?
-  winterRegularInPlaceholder String?
+  regularInPlaceholder        String?
+  regularOutPlaceholder       String?
+  morningInPlaceholder        String?
+  morningOutPlaceholder       String?
+  nightInPlaceholder          String?
+  nightOutPlaceholder         String?
+  winterRegularInPlaceholder  String?
   winterRegularOutPlaceholder String?
-  winterMorningInPlaceholder String?
+  winterMorningInPlaceholder  String?
   winterMorningOutPlaceholder String?
-  winterNightInPlaceholder String?
-  winterNightOutPlaceholder String?
+  winterNightInPlaceholder    String?
+  winterNightOutPlaceholder   String?
+
   @@map("daydetails")
 }
 
 model Department {
-  id          Int @id @default(autoincrement())
-  name        String @unique
-  code        String @unique // For template file naming (e.g., "grsd", "it")
-  templateFile String // Actual template file name (e.g., "template_grsd.xlsx")
+  id                          Int               @id @default(autoincrement())
+  name                        String            @unique
+  code                        String            @unique // For template file naming (e.g., "grsd", "it")
+  templateFile                String // Actual template file name (e.g., "template_grsd.xlsx")
   // Department-specific placeholders for shift times
-  regularInPlaceholder String?
-  regularOutPlaceholder String?
-  morningInPlaceholder String?
-  morningOutPlaceholder String?
-  nightInPlaceholder String?
-  nightOutPlaceholder String?
-  winterRegularInPlaceholder String?
+  regularInPlaceholder        String?
+  regularOutPlaceholder       String?
+  morningInPlaceholder        String?
+  morningOutPlaceholder       String?
+  nightInPlaceholder          String?
+  nightOutPlaceholder         String?
+  winterRegularInPlaceholder  String?
   winterRegularOutPlaceholder String?
-  winterMorningInPlaceholder String?
+  winterMorningInPlaceholder  String?
   winterMorningOutPlaceholder String?
-  winterNightInPlaceholder String?
-  winterNightOutPlaceholder String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  overtimeRecords OverTimeDetails[]
+  winterNightInPlaceholder    String?
+  winterNightOutPlaceholder   String?
+  createdAt                   DateTime          @default(now())
+  updatedAt                   DateTime          @updatedAt
+  overtimeRecords             OverTimeDetails[]
+
   @@map("department")
 }
 
-model Settings{
-  id  Int @id @default(1)
-  isWinter Boolean @default(false)
+model Settings {
+  id             Int     @id @default(1)
+  isWinter       Boolean @default(false)
   winterStartDay Int?
+  winterEndDay   Int?
+
   @@map("settings")
 }
 
@@ -96,5 +101,6 @@ model User {
   username String @unique
   password String
   role     String
+
   @@map("user")
 }
