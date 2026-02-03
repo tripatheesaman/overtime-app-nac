@@ -20,7 +20,7 @@
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
     "lucide-react": "^0.513.0",
-    "next": "15.2.2",
+    "next": "15.2.8",
     "prisma": "^6.5.0",
     "prisma-client": "^0.0.0",
     "react": "^19.0.0",
