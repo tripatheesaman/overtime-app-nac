@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { FormData } from "@/app/types/InputFormType";
 import processRawTime from "@/app/lib/helpers/timetransformation";
 import FormatNightTime from "@/app/lib/helpers/formatNightTime";
@@ -23,9 +24,11 @@ const isHHMM = (value?: string | null) =>
   /^([01]\d|2[0-3]):([0-5]\d)$/.test((value ?? "").trim());
 
 const intervalHours = (start?: string, end?: string) => {
-  if (!isHHMM(start) || !isHHMM(end)) return 0;
-  const [startH, startM] = start.split(":").map(Number);
-  const [endH, endM] = end.split(":").map(Number);
+  const safeStart = (start ?? "").trim();
+  const safeEnd = (end ?? "").trim();
+  if (!isHHMM(safeStart) || !isHHMM(safeEnd)) return 0;
+  const [startH, startM] = safeStart.split(":").map(Number);
+  const [endH, endM] = safeEnd.split(":").map(Number);
   const startMinutes = startH * 60 + startM;
   let endMinutes = endH * 60 + endM;
   if (endMinutes <= startMinutes) endMinutes += 24 * 60;
@@ -173,19 +176,20 @@ export const POST = async (req: NextRequest) => {
       { status: 400 }
     );
     
-  const overTimeData = await CalculateOvertime(
-    finalProcessedData,
-    data.nightDutyDays,
-    data.dutyStartTime,
-    data.dutyEndTime,
-    data.regularOffDay,
-    data.nightDutyStartTime,
-    data.nightDutyEndTime,
-    data.morningShiftDays,
-    data.morningShiftStartTime,
-    data.morningShiftEndTime,
-    data.departmentId
-  );
+  const overTimeData =
+    (await CalculateOvertime(
+      finalProcessedData,
+      data.nightDutyDays,
+      data.dutyStartTime,
+      data.dutyEndTime,
+      data.regularOffDay,
+      data.nightDutyStartTime,
+      data.nightDutyEndTime,
+      data.morningShiftDays,
+      data.morningShiftStartTime,
+      data.morningShiftEndTime,
+      data.departmentId
+    )) ?? [];
 
   const normalizedRows = overTimeData as OvertimeResultRow[];
 
@@ -223,6 +227,15 @@ export const POST = async (req: NextRequest) => {
     overTimeData.length > 0 && "currentMonth" in overTimeData[0]
       ? String((overTimeData[0] as { currentMonth?: string }).currentMonth ?? "")
       : "";
+  const attendanceAudit: Prisma.InputJsonValue = JSON.parse(
+    JSON.stringify({
+      rawAttendance: data.inOutTimes,
+      processedAttendance: finalProcessedData,
+      overtimeBreakdown: overTimeData,
+      nightDutyDays: data.nightDutyDays ?? [],
+      morningShiftDays: data.morningShiftDays ?? [],
+    })
+  );
 
   await prisma.overTimeDetails.create({
     data: {
@@ -239,13 +252,7 @@ export const POST = async (req: NextRequest) => {
       regularoffday: data.regularOffDay,
       regulardutyhoursfrom: data.dutyStartTime,
       regulardutyhoursto: data.dutyEndTime,
-      attendancedata: {
-        rawAttendance: data.inOutTimes,
-        processedAttendance: finalProcessedData,
-        overtimeBreakdown: overTimeData,
-        nightDutyDays: data.nightDutyDays ?? [],
-        morningShiftDays: data.morningShiftDays ?? [],
-      },
+      attendancedata: attendanceAudit,
       departmentId: data.departmentId,
     },
   });
