@@ -4,6 +4,35 @@ import processRawTime from "@/app/lib/helpers/timetransformation";
 import FormatNightTime from "@/app/lib/helpers/formatNightTime";
 import ProcessBlankTimes from "@/app/lib/helpers/processblanktimes";
 import CalculateOvertime from "@/app/lib/helpers/calculateovertime";
+import prisma from "@/app/lib/prisma";
+
+type OvertimeResultRow = {
+  beforeDuty?: [string, string];
+  afterDuty?: [string, string];
+  totalHours?: number;
+  totalNightHours?: number;
+  totalChdHours?: number;
+  totalOffHours?: number;
+  totalDashainHours?: number;
+  totalTiharHours?: number;
+  hasNightOvertime?: boolean;
+  hasMorningOvertime?: boolean;
+};
+
+const isHHMM = (value?: string | null) =>
+  /^([01]\d|2[0-3]):([0-5]\d)$/.test((value ?? "").trim());
+
+const intervalHours = (start?: string, end?: string) => {
+  if (!isHHMM(start) || !isHHMM(end)) return 0;
+  const [startH, startM] = start.split(":").map(Number);
+  const [endH, endM] = end.split(":").map(Number);
+  const startMinutes = startH * 60 + startM;
+  let endMinutes = endH * 60 + endM;
+  if (endMinutes <= startMinutes) endMinutes += 24 * 60;
+  return (endMinutes - startMinutes) / 60;
+};
+
+const toDbIntHours = (hours: number) => Math.max(0, Math.round(hours));
 
 export const POST = async (req: NextRequest) => {
   if (req.method !== "POST") {
@@ -157,6 +186,70 @@ export const POST = async (req: NextRequest) => {
     data.morningShiftEndTime,
     data.departmentId
   );
+
+  const normalizedRows = overTimeData as OvertimeResultRow[];
+
+  const beforeDutyHours = normalizedRows.reduce(
+    (sum, row) => sum + intervalHours(row.beforeDuty?.[0], row.beforeDuty?.[1]),
+    0
+  );
+  const afterDutyHours = normalizedRows.reduce(
+    (sum, row) => sum + intervalHours(row.afterDuty?.[0], row.afterDuty?.[1]),
+    0
+  );
+  const totalOvertimeHours = normalizedRows.reduce(
+    (sum, row) => sum + (Number(row.totalHours) || 0),
+    0
+  );
+  const nightOvertimeHours = normalizedRows.reduce(
+    (sum, row) => sum + (Number(row.totalNightHours) || 0),
+    0
+  );
+  const holidayHours = normalizedRows.reduce(
+    (sum, row) =>
+      sum +
+      (Number(row.totalChdHours) || 0) +
+      (Number(row.totalOffHours) || 0) +
+      (Number(row.totalDashainHours) || 0) +
+      (Number(row.totalTiharHours) || 0),
+    0
+  );
+  const numberOfOddShifts = normalizedRows.reduce(
+    (sum, row) =>
+      sum + (row.hasNightOvertime || row.hasMorningOvertime ? 1 : 0),
+    0
+  );
+  const monthName =
+    overTimeData.length > 0 && "currentMonth" in overTimeData[0]
+      ? String((overTimeData[0] as { currentMonth?: string }).currentMonth ?? "")
+      : "";
+
+  await prisma.overTimeDetails.create({
+    data: {
+      name: data.name,
+      designation: data.designation,
+      staffid: data.staffId,
+      totalovertimehours: toDbIntHours(totalOvertimeHours),
+      nightovertime: toDbIntHours(nightOvertimeHours),
+      beforedutyhours: toDbIntHours(beforeDutyHours),
+      afterdutyhours: toDbIntHours(afterDutyHours),
+      numberofoddshifts: numberOfOddShifts,
+      holidayhours: toDbIntHours(holidayHours),
+      monthname: monthName,
+      regularoffday: data.regularOffDay,
+      regulardutyhoursfrom: data.dutyStartTime,
+      regulardutyhoursto: data.dutyEndTime,
+      attendancedata: {
+        rawAttendance: data.inOutTimes,
+        processedAttendance: finalProcessedData,
+        overtimeBreakdown: overTimeData,
+        nightDutyDays: data.nightDutyDays ?? [],
+        morningShiftDays: data.morningShiftDays ?? [],
+      },
+      departmentId: data.departmentId,
+    },
+  });
+
   return NextResponse.json(
     {
       success: true,

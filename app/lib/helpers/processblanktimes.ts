@@ -1,184 +1,60 @@
-import getCurrentMonthDetails from "@/app/services/DayDetails";
-import { DayDetailsType } from "@/app/types/DayDetailType";
-import prisma from "@/app/lib/prisma";
-import {
-  adjustTimeByHours,
-  applyWinterAdjustments,
-  parseWinterAdjustment,
-} from "@/app/lib/helpers/winterTimeAdjustments";
-
-const daysOfWeek = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
-
-const calculateTwoHoursBefore = (time: string): string =>
-  adjustTimeByHours(time, -2);
-
 interface AttendanceRecord {
   inTime: string;
   outTime: string;
 }
 
+const isMissingTime = (value?: string | null) => {
+  const normalized = (value ?? "").toString().trim().toUpperCase();
+  return !normalized || normalized === "NA" || normalized === "--";
+};
+
+const isValidHHMM = (value: string) => /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
+
 const ProcessBlankTimes = async (
   attendanceData: AttendanceRecord[],
-  regularInTime: string,
-  regularOutTime: string,
-  offDay: string,
-  morningShiftStartTime?: string,
-  morningShiftEndTime ?: string,
-  morningShiftDays?: number[],
-  nightDutyStartTime?: string,
-  nightDutyEndTime?: string,
-  nightDutyDays?: number[]
+  _regularInTime: string,
+  _regularOutTime: string,
+  _offDay: string,
+  _morningShiftStartTime?: string,
+  _morningShiftEndTime?: string,
+  _morningShiftDays?: number[],
+  _nightDutyStartTime?: string,
+  _nightDutyEndTime?: string,
+  _nightDutyDays?: number[]
 ) => {
-  const currentMonthDetails = await getCurrentMonthDetails();
-
-  if (
-    currentMonthDetails &&
-    typeof currentMonthDetails === "object" &&
-    "message" in currentMonthDetails &&
-    "status" in currentMonthDetails
-  ) {
-    throw new Error(
-      typeof currentMonthDetails.message === 'string' 
-        ? currentMonthDetails.message 
-        : 'No active month found'
-    );
-  }
-
-  const { startDay, holidays } = currentMonthDetails;
-
-  // Fetch global winter settings
-  let isWinterEnabled = false;
-  let winterStartDay: number | null = null;
-  let winterEndDay: number | null = null;
-  try {
-    const settings = await prisma.$queryRawUnsafe<Array<{ isWinter: number; winterStartDay: number | null; winterEndDay: number | null }>>(
-      'SELECT isWinter, winterStartDay, winterEndDay FROM settings WHERE id = 1 LIMIT 1'
-    );
-    if (settings && settings.length > 0) {
-      isWinterEnabled = Boolean(settings[0].isWinter);
-      winterStartDay = settings[0].winterStartDay;
-      winterEndDay = settings[0].winterEndDay;
-    }
-  } catch {}
-
-  // Get winter placeholders from month details
-  const details = currentMonthDetails as DayDetailsType;
-  const winterRegularInAdjustment = parseWinterAdjustment(
-    details.winterRegularInPlaceholder
-  );
-  const winterRegularOutAdjustment = parseWinterAdjustment(
-    details.winterRegularOutPlaceholder
-  );
-  const winterMorningInAdjustment = parseWinterAdjustment(
-    details.winterMorningInPlaceholder
-  );
-  const winterMorningOutAdjustment = parseWinterAdjustment(
-    details.winterMorningOutPlaceholder
-  );
-  const winterNightInAdjustment = parseWinterAdjustment(
-    details.winterNightInPlaceholder
-  );
-  const winterNightOutAdjustment = parseWinterAdjustment(
-    details.winterNightOutPlaceholder
-  );
+  void [
+    _regularInTime,
+    _regularOutTime,
+    _offDay,
+    _morningShiftStartTime,
+    _morningShiftEndTime,
+    _morningShiftDays,
+    _nightDutyStartTime,
+    _nightDutyEndTime,
+    _nightDutyDays,
+  ];
 
   const processedData = attendanceData.map((record, index) => {
-    const dayOfWeekIndex = (startDay + index) % 7;
-    const dayOfWeekName = daysOfWeek[dayOfWeekIndex];
-    const dayOfMonth = index + 1;
+    const dayNumber = index + 1;
+    const inTime = (record.inTime ?? "").toString().trim();
+    const outTime = (record.outTime ?? "").toString().trim();
+    const hasInTime = !isMissingTime(inTime);
+    const hasOutTime = !isMissingTime(outTime);
 
-    const isDayOff = dayOfWeekName.toLowerCase() === offDay.toLowerCase();
-    const isHoliday = holidays.includes(dayOfMonth);
-    const isOff = isDayOff || isHoliday;
-    const isMorningShift = morningShiftDays?.includes(dayOfMonth) || false;
-    const isNightDuty = nightDutyDays?.includes(dayOfMonth) || false;
-
-    // Check if winter applies for this day
-    const isWinterDay = Boolean(
-      isWinterEnabled && 
-      winterStartDay && 
-      dayOfMonth >= winterStartDay &&
-      (!winterEndDay || dayOfMonth <= winterEndDay)
-    );
-
-    const nextDayIndex = (startDay + index + 1) % 7;
-    const nextDayName = daysOfWeek[nextDayIndex];
-    const isDayBeforeOff = nextDayName.toLowerCase() === offDay.toLowerCase();
-
-    let inTime = record.inTime;
-    let outTime = record.outTime;
-
-    // Determine the appropriate duty times based on shift type and winter settings
-    let dutyInTime = regularInTime;
-    let dutyOutTime = regularOutTime;
-    
-    const allowWinterOutAdjustment = !(isDayBeforeOff && !isHoliday);
-
-    if (isNightDuty && nightDutyStartTime && nightDutyEndTime) {
-      const adjusted = applyWinterAdjustments({
-        baseStart: nightDutyStartTime,
-        baseEnd: nightDutyEndTime,
-        inAdjustment: winterNightInAdjustment ?? undefined,
-        outAdjustment: winterNightOutAdjustment ?? undefined,
-        isWinterDay,
-        allowOutAdjustment: allowWinterOutAdjustment,
-        baseEndNextDay: true,
-      });
-      dutyInTime = adjusted.start;
-      dutyOutTime = adjusted.end;
-    } else if (isMorningShift && morningShiftStartTime && morningShiftEndTime) {
-      const adjusted = applyWinterAdjustments({
-        baseStart: morningShiftStartTime,
-        baseEnd: morningShiftEndTime,
-        inAdjustment: winterMorningInAdjustment ?? undefined,
-        outAdjustment: winterMorningOutAdjustment ?? undefined,
-        isWinterDay,
-        allowOutAdjustment: allowWinterOutAdjustment,
-      });
-      dutyInTime = adjusted.start;
-      dutyOutTime = adjusted.end;
-    } else {
-      const adjusted = applyWinterAdjustments({
-        baseStart: regularInTime,
-        baseEnd: regularOutTime,
-        inAdjustment: winterRegularInAdjustment ?? undefined,
-        outAdjustment: winterRegularOutAdjustment ?? undefined,
-        isWinterDay,
-        allowOutAdjustment: allowWinterOutAdjustment,
-      });
-      dutyInTime = adjusted.start;
-      dutyOutTime = adjusted.end;
+    // Never auto-create duty times for missing/blank records.
+    // If either side is missing, treat the whole day as absent so overtime is not generated.
+    if (!hasInTime && !hasOutTime) {
+      return { inTime: "NA", outTime: "NA" };
+    }
+    if (!hasInTime || !hasOutTime) {
+      return { inTime: "NA", outTime: "NA" };
     }
 
-    const isShiftDay = isMorningShift || isNightDuty;
-
-    if (inTime === "NA" && outTime === "NA") {
-      if (isOff) {
-        return { inTime, outTime };
-      } else if (isShiftDay) {
-        return { inTime: "NA", outTime: "NA" };
-      } else {
-        inTime = dutyInTime;
-        outTime = isDayBeforeOff && !isHoliday ? calculateTwoHoursBefore(dutyOutTime) : dutyOutTime;
-      }
-    } else {
-      if (inTime === "NA") {
-        inTime = dutyInTime;
-      }
-      if (outTime === "NA") {
-        outTime =
-          isDayBeforeOff && !isHoliday
-            ? calculateTwoHoursBefore(dutyOutTime)
-            : dutyOutTime;
-      }
+    if (!isValidHHMM(inTime) || !isValidHHMM(outTime)) {
+      console.warn(
+        `Ignoring invalid time pair for day ${dayNumber}: in="${inTime}", out="${outTime}".`
+      );
+      return { inTime: "NA", outTime: "NA" };
     }
 
     return { inTime, outTime };
