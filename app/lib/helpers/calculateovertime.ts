@@ -49,6 +49,12 @@ function calculateTwoHoursBefore(time: string): string {
   return adjustTimeByHours(time, -2);
 }
 
+function isValidRecordedTime(value?: string | null): boolean {
+  const normalized = (value ?? "").toString().trim().toUpperCase();
+  if (!normalized || normalized === "NA" || normalized === "--") return false;
+  return /^([01]\d|2[0-3]):([0-5]\d)$/.test(normalized);
+}
+
 function getOvertimeIntervals(
   inTime: string,
   outTime: string,
@@ -446,7 +452,11 @@ const CalculateOvertime = async (
         }
       }
 
-      if (!record || record.inTime === "NA" || record.outTime === "NA") {
+      if (
+        !record ||
+        !isValidRecordedTime(record.inTime) ||
+        !isValidRecordedTime(record.outTime)
+      ) {
         results.push({
           day: dayNumber,
           currentMonth: name,
