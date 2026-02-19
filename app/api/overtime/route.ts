@@ -178,17 +178,17 @@ export const POST = async (req: NextRequest) => {
     
   const overTimeData =
     (await CalculateOvertime(
-      finalProcessedData,
-      data.nightDutyDays,
-      data.dutyStartTime,
-      data.dutyEndTime,
-      data.regularOffDay,
-      data.nightDutyStartTime,
-      data.nightDutyEndTime,
-      data.morningShiftDays,
-      data.morningShiftStartTime,
-      data.morningShiftEndTime,
-      data.departmentId
+    finalProcessedData,
+    data.nightDutyDays,
+    data.dutyStartTime,
+    data.dutyEndTime,
+    data.regularOffDay,
+    data.nightDutyStartTime,
+    data.nightDutyEndTime,
+    data.morningShiftDays,
+    data.morningShiftStartTime,
+    data.morningShiftEndTime,
+    data.departmentId
     )) ?? [];
 
   const normalizedRows = overTimeData as OvertimeResultRow[];

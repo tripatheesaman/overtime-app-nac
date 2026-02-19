@@ -85,7 +85,6 @@ function getOvertimeIntervals(
   const midnight = dayjs().startOf("day").add(1, "day");
   const nightStartTime = parseTime(nightDutyStart);
   let nightEndTime = parseTime(nightDutyEnd);
-  const baseNightEnd = nightEndTime;
   if (nightEndTime.isBefore(nightStartTime) || nightEndTime.isSame(nightStartTime)) {
     nightEndTime = nightEndTime.add(1, "day");
   }
@@ -164,10 +163,21 @@ function getOvertimeIntervals(
       }
 
       if (end.isAfter(nightSegmentEnd)) {
-        result.afterDuty = [formatTime(nightSegmentEnd), formatTime(end)];
+        // For night duty, post-midnight overflow should stay in night column.
+        if (nightSegmentEnd.isSame(midnight) || nightSegmentEnd.isAfter(midnight)) {
+          mergeNightSegment(nightSegmentEnd, end);
+        } else {
+          result.afterDuty = [formatTime(nightSegmentEnd), formatTime(end)];
+        }
       }
-    } else if (end.isAfter(baseNightEnd)) {
-      result.afterDuty = [formatTime(baseNightEnd), formatTime(end)];
+    } else if (end.isAfter(nightEndTime)) {
+      // Avoid comparing against same-day 00:00 (baseNightEnd), which can incorrectly
+      // classify evening duty as after-duty. Use effective duty end with day context.
+      if (nightEndTime.isSame(midnight) || nightEndTime.isAfter(midnight)) {
+        mergeNightSegment(nightEndTime, end);
+      } else {
+        result.afterDuty = [formatTime(nightEndTime), formatTime(end)];
+      }
     }
   } else if (isMorning) {
     // For regular morning shift, only time outside the morning window is overtime
