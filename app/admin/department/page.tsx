@@ -1,6 +1,18 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
+import { AdminCard } from "@/app/admin/components/AdminCard";
+import { AdminField } from "@/app/admin/components/AdminField";
+import { AdminSection } from "@/app/admin/components/AdminSection";
+import { AdminButton } from "@/app/admin/components/AdminButton";
+import {
+  AdminTable,
+  AdminThead,
+  AdminTh,
+  AdminTbody,
+  AdminTr,
+  AdminTd,
+} from "@/app/admin/components/AdminTable";
 
 type Department = {
   id?: number;
@@ -24,28 +36,28 @@ type Department = {
 export default function DepartmentPage() {
   const [loading, setLoading] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const emptyForm: Department = { 
-    name: '', 
-    code: '',
-    regularInPlaceholder: '',
-    regularOutPlaceholder: '',
-    morningInPlaceholder: '',
-    morningOutPlaceholder: '',
-    nightInPlaceholder: '',
-    nightOutPlaceholder: '',
-    winterRegularInPlaceholder: '',
-    winterRegularOutPlaceholder: '',
-    winterMorningInPlaceholder: '',
-    winterMorningOutPlaceholder: '',
-    winterNightInPlaceholder: '',
-    winterNightOutPlaceholder: '',
+  const emptyForm: Department = {
+    name: "",
+    code: "",
+    regularInPlaceholder: "",
+    regularOutPlaceholder: "",
+    morningInPlaceholder: "",
+    morningOutPlaceholder: "",
+    nightInPlaceholder: "",
+    nightOutPlaceholder: "",
+    winterRegularInPlaceholder: "",
+    winterRegularOutPlaceholder: "",
+    winterMorningInPlaceholder: "",
+    winterMorningOutPlaceholder: "",
+    winterNightInPlaceholder: "",
+    winterNightOutPlaceholder: "",
   };
   const [form, setForm] = useState<Department>(emptyForm);
 
   const fetchDepartments = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/department');
+      const res = await fetch("/api/department");
       const data = await res.json();
       if (data.success) setDepartments(data.data);
     } finally {
@@ -60,18 +72,18 @@ export default function DepartmentPage() {
   const onSubmit = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/department', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/department", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      if (!data.success) throw new Error(data.error || 'Failed');
+      if (!data.success) throw new Error(data.error || "Failed");
       await fetchDepartments();
       setForm(emptyForm);
     } catch (e) {
       console.error(e);
-      alert('Failed to save. Check console for details.');
+      alert("Failed to save. Check console for details.");
     } finally {
       setLoading(false);
     }
@@ -79,251 +91,219 @@ export default function DepartmentPage() {
 
   const onDelete = async (id?: number) => {
     if (!id) return;
-    if (!confirm('Are you sure you want to delete this department? This cannot be undone.')) return;
-
+    if (
+      !confirm(
+        "Delete this department? Only allowed if no overtime records reference it."
+      )
+    )
+      return;
     setLoading(true);
     try {
       const res = await fetch(`/api/department/delete?id=${id}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
       const data = await res.json();
-      if (!data.success) throw new Error(data.error || 'Failed');
+      if (!data.success) throw new Error(data.error || "Failed");
       await fetchDepartments();
     } catch (e) {
       console.error(e);
-      alert('Failed to delete department.');
+      alert("Failed to delete department.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="p-6 space-y-8">
-      {/* Department Form */}
+    <div className="space-y-6">
       <div>
-        <h2 className="font-medium mb-3">Add/Edit Department</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm mb-1">Department Name</label>
-            <input 
-              className="input-field" 
-              value={form.name} 
-              onChange={e => setForm({ ...form, name: e.target.value })}
-              placeholder="e.g. GRSD"
-            />
-          </div>
-          <div>
-            <label className="block text-sm mb-1">Department Code</label>
-            <input 
-              className="input-field" 
-              value={form.code} 
-              onChange={e => setForm({ ...form, code: e.target.value })}
-              placeholder="e.g. grsd"
-            />
-            <p className="text-xs text-gray-500 mt-1">Used for template file naming (e.g., template_grsd.xlsx)</p>
-          </div>
-        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+          Departments
+        </h1>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+          Each department maps to an Excel template file in{" "}
+          <code className="rounded bg-slate-200 px-1.5 py-0.5 text-xs dark:bg-slate-800">
+            /public
+          </code>{" "}
+          named{" "}
+          <code className="rounded bg-slate-200 px-1.5 py-0.5 text-xs dark:bg-slate-800">
+            template_&#123;code&#125;.xlsx
+          </code>
+          . Placeholders pre-fill the public overtime form when staff pick this
+          department.
+        </p>
+      </div>
 
-        {/* Placeholders Section */}
-        <div className="mt-6">
-          <h3 className="font-medium mb-3 text-sm">Department-Specific Placeholders</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm mb-1">Regular In Placeholder</label>
-              <input 
-                className="input-field" 
-                value={form.regularInPlaceholder ?? ''} 
-                onChange={e => setForm({ ...form, regularInPlaceholder: e.target.value })}
-                placeholder="e.g. 10:00"
-              />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Regular Out Placeholder</label>
-              <input 
-                className="input-field" 
-                value={form.regularOutPlaceholder ?? ''} 
-                onChange={e => setForm({ ...form, regularOutPlaceholder: e.target.value })}
-                placeholder="e.g. 17:00"
-              />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Morning In Placeholder</label>
-              <input 
-                className="input-field" 
-                value={form.morningInPlaceholder ?? ''} 
-                onChange={e => setForm({ ...form, morningInPlaceholder: e.target.value })}
-                placeholder="e.g. 05:30"
-              />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Morning Out Placeholder</label>
-              <input 
-                className="input-field" 
-                value={form.morningOutPlaceholder ?? ''} 
-                onChange={e => setForm({ ...form, morningOutPlaceholder: e.target.value })}
-                placeholder="e.g. 12:30"
-              />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Night In Placeholder</label>
-              <input 
-                className="input-field" 
-                value={form.nightInPlaceholder ?? ''} 
-                onChange={e => setForm({ ...form, nightInPlaceholder: e.target.value })}
-                placeholder="e.g. 17:00"
-              />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Night Out Placeholder</label>
-              <input 
-                className="input-field" 
-                value={form.nightOutPlaceholder ?? ''} 
-                onChange={e => setForm({ ...form, nightOutPlaceholder: e.target.value })}
-                placeholder="e.g. 00:00"
-              />
-            </div>
-          </div>
-          
-          <div className="mt-4">
-            <h4 className="font-medium mb-2 text-sm">Winter Offsets (hours)</h4>
-            <p className="text-xs text-gray-500 mb-3">Use positive numbers to push start times later or bring end times earlier.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm mb-1">Regular In Offset</label>
-                <input 
-                  type="number"
-                  step="0.25"
-                  className="input-field" 
-                  value={form.winterRegularInPlaceholder ?? ''} 
-                  onChange={e => setForm({ ...form, winterRegularInPlaceholder: e.target.value })}
-                  placeholder="e.g. 1"
-                />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Regular Out Offset</label>
-                <input 
-                  type="number"
-                  step="0.25"
-                  className="input-field" 
-                  value={form.winterRegularOutPlaceholder ?? ''} 
-                  onChange={e => setForm({ ...form, winterRegularOutPlaceholder: e.target.value })}
-                  placeholder="e.g. 1"
-                />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Morning In Offset</label>
-                <input 
-                  type="number"
-                  step="0.25"
-                  className="input-field" 
-                  value={form.winterMorningInPlaceholder ?? ''} 
-                  onChange={e => setForm({ ...form, winterMorningInPlaceholder: e.target.value })}
-                  placeholder="e.g. 1"
-                />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Morning Out Offset</label>
-                <input 
-                  type="number"
-                  step="0.25"
-                  className="input-field" 
-                  value={form.winterMorningOutPlaceholder ?? ''} 
-                  onChange={e => setForm({ ...form, winterMorningOutPlaceholder: e.target.value })}
-                  placeholder="e.g. 1"
-                />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Night In Offset</label>
-                <input 
-                  type="number"
-                  step="0.25"
-                  className="input-field" 
-                  value={form.winterNightInPlaceholder ?? ''} 
-                  onChange={e => setForm({ ...form, winterNightInPlaceholder: e.target.value })}
-                  placeholder="e.g. 1"
-                />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Night Out Offset</label>
-                <input 
-                  type="number"
-                  step="0.25"
-                  className="input-field" 
-                  value={form.winterNightOutPlaceholder ?? ''} 
-                  onChange={e => setForm({ ...form, winterNightOutPlaceholder: e.target.value })}
-                  placeholder="e.g. 1"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4 flex gap-3">
-          <button 
-            className="btn-primary"
-            onClick={onSubmit}
-            disabled={loading || !form.name || !form.code}
+      <AdminCard
+        title={form.id ? "Edit department" : "New department"}
+        description="Use a short lowercase code without spaces (e.g. grsd, it). The code cannot be changed implicitly after create—edit carefully."
+      >
+        <div className="space-y-6">
+          <AdminSection
+            title="Identity"
+            subtitle="What staff see in the dropdown and how files are named."
           >
-            {form.id ? 'Update' : 'Create'}
-          </button>
-          {form.id && (
-            <button 
-              className="bg-gray-200 px-4 py-2 rounded"
+            <div className="grid gap-4 sm:grid-cols-2">
+              <AdminField
+                label="Department name"
+                hint="Full name shown in the overtime calculator, e.g. Ground Support."
+              >
+                <input
+                  className="input-field"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="e.g. Ground Support"
+                />
+              </AdminField>
+              <AdminField
+                label="Department code"
+                hint="Letters and numbers only; stored lowercase. Drives template filename."
+              >
+                <input
+                  className="input-field font-mono"
+                  value={form.code}
+                  onChange={(e) =>
+                    setForm({ ...form, code: e.target.value })
+                  }
+                  placeholder="e.g. grsd"
+                />
+              </AdminField>
+            </div>
+          </AdminSection>
+
+          <AdminSection
+            title="Suggested duty times (placeholders)"
+            subtitle="24h HH:MM. When a user selects this department, these values load into Step 2."
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              {(
+                [
+                  ["regularInPlaceholder", "Regular shift — clock in"],
+                  ["regularOutPlaceholder", "Regular shift — clock out"],
+                  ["morningInPlaceholder", "Morning shift — in"],
+                  ["morningOutPlaceholder", "Morning shift — out"],
+                  ["nightInPlaceholder", "Night shift — in"],
+                  ["nightOutPlaceholder", "Night shift — out"],
+                ] as const
+              ).map(([key, label]) => (
+                <AdminField key={key} label={label}>
+                  <input
+                    className="input-field font-mono"
+                    value={form[key] ?? ""}
+                    onChange={(e) =>
+                      setForm({ ...form, [key]: e.target.value })
+                    }
+                    placeholder="HH:MM"
+                  />
+                </AdminField>
+              ))}
+            </div>
+          </AdminSection>
+
+          <AdminSection
+            title="Winter offsets (hours)"
+            subtitle="Optional decimal hours; combined with month-level winter settings when winter mode is on."
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              {(
+                [
+                  ["winterRegularInPlaceholder", "Regular — in offset"],
+                  ["winterRegularOutPlaceholder", "Regular — out offset"],
+                  ["winterMorningInPlaceholder", "Morning — in offset"],
+                  ["winterMorningOutPlaceholder", "Morning — out offset"],
+                  ["winterNightInPlaceholder", "Night — in offset"],
+                  ["winterNightOutPlaceholder", "Night — out offset"],
+                ] as const
+              ).map(([key, label]) => (
+                <AdminField key={key} label={label}>
+                  <input
+                    type="number"
+                    step={0.25}
+                    className="input-field"
+                    value={form[key] ?? ""}
+                    onChange={(e) =>
+                      setForm({ ...form, [key]: e.target.value })
+                    }
+                  />
+                </AdminField>
+              ))}
+            </div>
+          </AdminSection>
+        </div>
+
+        <div className="mt-8 flex flex-wrap gap-3 border-t border-slate-100 pt-6 dark:border-slate-800">
+          <AdminButton
+            onClick={onSubmit}
+            disabled={loading || !form.name.trim() || !form.code.trim()}
+          >
+            {loading ? "Saving…" : form.id ? "Update department" : "Create department"}
+          </AdminButton>
+          {form.id ? (
+            <AdminButton
+              variant="muted"
               onClick={() => setForm(emptyForm)}
               disabled={loading}
             >
-              Cancel
-            </button>
-          )}
+              Cancel edit
+            </AdminButton>
+          ) : null}
         </div>
-      </div>
+      </AdminCard>
 
-      {/* Existing Departments */}
-      <div className="p-4 rounded-lg border bg-white dark:bg-gray-800">
-        <h2 className="font-medium mb-3">Existing Departments</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="text-left border-b">
-                <th className="py-2 pr-4">Name</th>
-                <th className="py-2 pr-4">Code</th>
-                <th className="py-2 pr-4">Template File</th>
-                <th className="py-2 pr-4">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {departments.map(dept => (
-                <tr key={dept.id} className="border-b">
-                  <td className="py-2 pr-4">{dept.name}</td>
-                  <td className="py-2 pr-4">{dept.code}</td>
-                  <td className="py-2 pr-4">template_{dept.code}.xlsx</td>
-                  <td className="py-2 pr-4 flex gap-2">
-                    <button 
-                      className="px-2 py-1 border rounded"
+      <AdminCard
+        title="Registered departments"
+        description={
+          loading ? "Loading…" : `${departments.length} department(s) in the system.`
+        }
+      >
+        <AdminTable>
+          <AdminThead>
+            <AdminTh>Name</AdminTh>
+            <AdminTh>Code</AdminTh>
+            <AdminTh>Excel template</AdminTh>
+            <AdminTh className="text-right">Actions</AdminTh>
+          </AdminThead>
+          <AdminTbody>
+            {departments.map((dept) => (
+              <AdminTr key={dept.id}>
+                <AdminTd className="font-medium">{dept.name}</AdminTd>
+                <AdminTd>
+                  <code className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold dark:bg-slate-800">
+                    {dept.code}
+                  </code>
+                </AdminTd>
+                <AdminTd className="font-mono text-xs text-slate-600 dark:text-slate-400">
+                  template_{dept.code}.xlsx
+                </AdminTd>
+                <AdminTd className="text-right">
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <AdminButton
+                      variant="muted"
+                      className="!px-3 !py-1.5 !text-xs"
                       onClick={() => setForm(dept)}
                     >
                       Edit
-                    </button>
-                    <button 
-                      className="px-2 py-1 border rounded bg-red-100 hover:bg-red-200 text-red-700"
+                    </AdminButton>
+                    <AdminButton
+                      variant="danger"
+                      className="!px-3 !py-1.5 !text-xs"
                       onClick={() => onDelete(dept.id)}
                     >
                       Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {departments.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="py-4 text-center text-gray-500">
-                    No departments found. Add one above.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                    </AdminButton>
+                  </div>
+                </AdminTd>
+              </AdminTr>
+            ))}
+            {departments.length === 0 && !loading && (
+              <AdminTr>
+                <AdminTd colSpan={4} className="py-10 text-center text-slate-500">
+                  No departments yet. Add one using the form above.
+                </AdminTd>
+              </AdminTr>
+            )}
+          </AdminTbody>
+        </AdminTable>
+      </AdminCard>
     </div>
   );
 }

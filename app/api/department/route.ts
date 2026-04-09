@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/app/lib/prisma";
+import { canEditOperationalData, getAdminSession } from "@/app/lib/auth";
 
 export async function GET() {
   try {
@@ -9,8 +10,6 @@ export async function GET() {
     return NextResponse.json({ success: true, data: departments });
   } catch (error) {
     return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -35,6 +34,10 @@ interface DepartmentRequest {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getAdminSession(req);
+    if (!canEditOperationalData(session)) {
+      return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+    }
     const body = await req.json();
     const { 
       id, 
@@ -160,7 +163,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, data: record });
   } catch (error) {
     return NextResponse.json({ success: false, error: String(error) }, { status: 400 });
-  } finally {
-    await prisma.$disconnect();
   }
 }

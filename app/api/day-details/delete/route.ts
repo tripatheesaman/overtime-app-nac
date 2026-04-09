@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/app/lib/prisma";
+import { canEditOperationalData, getAdminSession } from "@/app/lib/auth";
 
 export async function DELETE(req: NextRequest) {
   try {
+    const session = await getAdminSession(req);
+    if (!canEditOperationalData(session)) {
+      return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+    }
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     
@@ -33,7 +38,5 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ success: false, error: String(error) }, { status: 400 });
-  } finally {
-    await prisma.$disconnect();
   }
 }

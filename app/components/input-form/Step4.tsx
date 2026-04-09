@@ -8,6 +8,7 @@ import { saveAs } from "file-saver";
 import dayjs from "dayjs";
 import {
   applyWinterAdjustments,
+  adjustTimeByHours,
   parseWinterAdjustment,
 } from "@/app/lib/helpers/winterTimeAdjustments";
 
@@ -44,11 +45,11 @@ const Step4 = () => {
     return `${year}/${month}/${dayString}`;
   };
 
-  const calculateTwoHoursBefore = (time: string): string => {
-    const [hours, minutes] = time.split(":").map(Number);
-    const date = dayjs().hour(hours).minute(minutes);
-    const twoHoursBefore = date.subtract(2, "hour");
-    return twoHoursBefore.format("HH:mm");
+  const getNextDayName = (dayName: string): string => {
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const idx = days.findIndex((d) => d.toLowerCase() === dayName.toLowerCase());
+    if (idx < 0) return "";
+    return days[(idx + 1) % days.length];
   };
 
   const fetchCurrentMonthDetails = async () => {
@@ -589,12 +590,31 @@ const Step4 = () => {
       currentRow.getCell("C").value = entry?.beforeDuty?.[0] ?? "";
 
       // Calculate regular duty start and end times (D and E columns)
-      // Check if it's day before off day
+      // Check if it's day before off day (supports configured double off-day period)
+      const doubleOffdayStartDay = Number(monthDetails?.doubleOffdayStartDay ?? 23);
+      const secondOffDayName = getNextDayName(formData.regularOffDay ?? "");
+      const currentDayIndex = (startDay + index) % 7;
+      const currentDayName = daysOfWeek[currentDayIndex];
       const nextDayIndex = (startDay + index + 1) % 7;
       const nextDayName = daysOfWeek[nextDayIndex];
-      const isDayBeforeOff = nextDayName.toLowerCase() === (formData.regularOffDay ?? "").toLowerCase();
+      const normalizedPrimaryOff = (formData.regularOffDay ?? "").toLowerCase();
+      const normalizedSecondOff = secondOffDayName.toLowerCase();
+      const isCalendarOffDay =
+        currentDayName.toLowerCase() === normalizedPrimaryOff ||
+        (dayNumber >= doubleOffdayStartDay &&
+          Boolean(secondOffDayName) &&
+          currentDayName.toLowerCase() === normalizedSecondOff);
+      const nextIsPrimaryOff = nextDayName.toLowerCase() === (formData.regularOffDay ?? "").toLowerCase();
+      const nextIsSecondaryOff =
+        dayNumber + 1 >= doubleOffdayStartDay &&
+        secondOffDayName &&
+        nextDayName.toLowerCase() === secondOffDayName.toLowerCase();
+      const isDayBeforeOff = nextIsPrimaryOff || nextIsSecondaryOff;
+      const isDayBeforeOffWindow =
+        dayNumber < doubleOffdayStartDay && isDayBeforeOff;
       const isHoliday = holidays.includes(dayNumber);
       const isOffDayEntry = entry?.typeOfHoliday?.includes("OFF") || entry?.typeOfHoliday === "CHD" || entry?.isHolidayOvertime;
+      const reductionHours = Number(monthDetails?.dayBeforeOffReductionHours ?? 2);
 
       // Check if winter applies for this day
       const isWinterDay = Boolean(
@@ -608,8 +628,10 @@ const Step4 = () => {
       const isNightDutyDay = Array.isArray(formData.nightDutyDays) && formData.nightDutyDays.includes(dayNumber);
       const isMorningShiftDay = Array.isArray(formData.morningShiftDays) && formData.morningShiftDays.includes(dayNumber);
 
-      const allowWinterOutAdjustment =
-        !(isDayBeforeOff && !isHoliday && !isOffDayEntry);
+      const dayBeforeOffAffectsWinterOutOnlyForRegular =
+        isDayBeforeOffWindow && !isHoliday && !isOffDayEntry && !isNightDutyDay && !isMorningShiftDay;
+
+      const allowWinterOutAdjustment = !dayBeforeOffAffectsWinterOutOnlyForRegular;
 
       const adjustShiftTimes = (
         baseStart: string,
@@ -641,9 +663,6 @@ const Step4 = () => {
         );
         dutyStartTime = adjusted.start;
         dutyEndTime = adjusted.end;
-        if (isDayBeforeOff && !isHoliday && !isOffDayEntry && dutyEndTime) {
-          dutyEndTime = calculateTwoHoursBefore(dutyEndTime);
-        }
       } else if (isMorningShiftDay) {
         const adjusted = adjustShiftTimes(
           formData.morningShiftStartTime ?? dutyStartTime,
@@ -653,9 +672,6 @@ const Step4 = () => {
         );
         dutyStartTime = adjusted.start;
         dutyEndTime = adjusted.end;
-        if (isDayBeforeOff && !isHoliday && !isOffDayEntry && dutyEndTime) {
-          dutyEndTime = calculateTwoHoursBefore(dutyEndTime);
-        }
       } else {
         const adjusted = adjustShiftTimes(
           dutyStartTime,
@@ -665,8 +681,25 @@ const Step4 = () => {
         );
         dutyStartTime = adjusted.start;
         dutyEndTime = adjusted.end;
-        if (isDayBeforeOff && !isHoliday && !isOffDayEntry && dutyEndTime) {
-          dutyEndTime = calculateTwoHoursBefore(dutyEndTime);
+        if (isDayBeforeOffWindow && !isHoliday && !isOffDayEntry && dutyEndTime) {
+          const [hours, minutes] = dutyEndTime.split(":").map(Number);
+          dutyEndTime = dayjs().hour(hours).minute(minutes).subtract(Math.abs(reductionHours), "hour").format("HH:mm");
+        }
+      }
+
+      const skipLateMonthNominalShift =
+        isCalendarOffDay ||
+        isHoliday ||
+        isDashainDay ||
+        isTiharDay;
+      if (!skipLateMonthNominalShift && dayNumber >= doubleOffdayStartDay) {
+        if (isNightDutyDay) {
+          dutyStartTime = adjustTimeByHours(dutyStartTime, -1);
+        } else if (isMorningShiftDay) {
+          dutyStartTime = adjustTimeByHours(dutyStartTime, -0.5);
+          dutyEndTime = adjustTimeByHours(dutyEndTime, 0.5);
+        } else {
+          dutyStartTime = adjustTimeByHours(dutyStartTime, -1);
         }
       }
 
@@ -719,8 +752,7 @@ const Step4 = () => {
         const dutyTimeInMinutes = dutyHours * 60 + dutyMinutes;
         const outTimeInMinutes = outHours * 60 + outMinutes;
 
-        // Grace period is 40 minutes
-        const gracePeriodMinutes = 40;
+        const gracePeriodMinutes = Number(monthDetails?.overtimeGraceMinutes ?? 40);
         const gracePeriodEnd = dutyTimeInMinutes + gracePeriodMinutes;
 
         // Only fill if out time is beyond grace period (more than 40 minutes after effective duty end)

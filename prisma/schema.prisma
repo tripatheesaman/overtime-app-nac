@@ -88,10 +88,20 @@ model Department {
 }
 
 model Settings {
-  id             Int     @id @default(1)
-  isWinter       Boolean @default(false)
-  winterStartDay Int?
-  winterEndDay   Int?
+  id                         Int     @id @default(1)
+  isWinter                   Boolean @default(false)
+  winterStartDay             Int?
+  winterEndDay               Int?
+  inTimeThreshold            Int?    @default(30)
+  outTimeThreshold           Int?    @default(30)
+  oddShiftMinHours           Float?
+  doubleOffdayStartDay       Int?    @default(23)
+  dayBeforeOffReductionHours Float?
+  overtimeGraceMinutes       Int?    @default(40)
+  specialWindowStart         String? @db.VarChar(5)
+  specialWindowEnd           String? @db.VarChar(5)
+  specialWindowLowerCutoff   String? @db.VarChar(5)
+  specialWindowUpperCutoff   String? @db.VarChar(5)
 
   @@map("settings")
 }

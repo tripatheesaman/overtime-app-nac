@@ -1,4 +1,11 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import { FormData } from "@/app/types/InputFormType";
 
 interface ContextType{
@@ -14,7 +21,7 @@ interface FormContextProviderProps{
 const FormContext = createContext<ContextType | undefined>(undefined)
 
 export const FormContextProvider:React.FC<FormContextProviderProps> = ({children})=>{
-    const [formData, setFormData] = useState<FormData>({
+    const [formData, setFormDataState] = useState<FormData>({
         name: "",
         staffId: "",
         regularOffDay: "Saturday",
@@ -32,9 +39,9 @@ export const FormContextProvider:React.FC<FormContextProviderProps> = ({children
     })
     const [step, setStep] = useState(2)
 
-    const updateFormData = (data:Partial<FormData>)=>{
-        setFormData((prev)=>({...prev,...data}))
-    }
+    const setFormData = useCallback((data: Partial<FormData>) => {
+        setFormDataState((prev) => ({ ...prev, ...data }));
+    }, []);
 
     // Check for extension data on initial load
     useEffect(() => {
@@ -47,7 +54,7 @@ export const FormContextProvider:React.FC<FormContextProviderProps> = ({children
             try {
                 const parsedData = JSON.parse(extensionData);
                 if (parsedData) {
-                    updateFormData({
+                    setFormData({
                         name: parsedData.name || "",
                         staffId: parsedData.staffId || "",
                         designation: parsedData.designation || "",
@@ -68,10 +75,15 @@ export const FormContextProvider:React.FC<FormContextProviderProps> = ({children
                 console.error('Error parsing extension data:', error);
             }
         }
-    }, []);
+    }, [setFormData]);
+
+    const contextValue = useMemo(
+        () => ({ formData, setFormData, step, setStep }),
+        [formData, setFormData, step, setStep]
+    );
 
     return(
-        <FormContext.Provider value={{formData,setFormData:updateFormData,step,setStep}}>
+        <FormContext.Provider value={contextValue}>
             {children}
         </FormContext.Provider>
     )
