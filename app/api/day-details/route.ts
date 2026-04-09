@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import prisma from "@/app/lib/prisma";
+import { canEditOperationalData, getAdminSession } from "@/app/lib/auth";
 
 export async function GET() {
   try {
@@ -24,13 +25,15 @@ export async function GET() {
       error: String(error),
       details: error instanceof Error ? error.stack : undefined
     }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getAdminSession(req);
+    if (!canEditOperationalData(session)) {
+      return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+    }
     const body = await req.json();
     const {
       id,
@@ -148,14 +151,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, data: record });
   } catch (error) {
     return NextResponse.json({ success: false, error: String(error) }, { status: 400 });
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
 // Set active month by id and deactivate others
 export async function PATCH(req: NextRequest) {
   try {
+    const session = await getAdminSession(req);
+    if (!canEditOperationalData(session)) {
+      return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+    }
     const body = await req.json();
     const { id } = body || {};
     if (!id) return NextResponse.json({ success: false, error: "id is required" }, { status: 400 });
@@ -168,8 +173,6 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ success: false, error: String(error) }, { status: 400 });
-  } finally {
-    await prisma.$disconnect();
   }
 }
 

@@ -11,6 +11,12 @@ interface Department {
   name: string;
   code: string;
   templateFile: string;
+  regularInPlaceholder?: string | null;
+  regularOutPlaceholder?: string | null;
+  morningInPlaceholder?: string | null;
+  morningOutPlaceholder?: string | null;
+  nightInPlaceholder?: string | null;
+  nightOutPlaceholder?: string | null;
 }
 
 const schema = z
@@ -78,6 +84,8 @@ const Step2 = () => {
     handleSubmit,
     formState: { errors },
     setValue,
+    watch,
+    getValues,
   } = useForm<FormValues>({
     defaultValues: {
       departmentId: formData.departmentId || 0,
@@ -122,6 +130,39 @@ const Step2 = () => {
     };
     fetchDepartments();
   }, [setValue, setFormData, formData.departmentId]);
+
+  const selectedDepartmentId = watch("departmentId");
+
+  // Apply department placeholders when the selected department (or department list) changes.
+  // Do not list formData.* in deps — setFormData updates them and would retrigger forever.
+  useEffect(() => {
+    if (!selectedDepartmentId || selectedDepartmentId === 0) return;
+    const selected = departments.find((d) => d.id === selectedDepartmentId);
+    if (!selected) return;
+
+    const updates: Partial<FormValues> = {};
+    if (selected.regularInPlaceholder) updates.dutyStartTime = selected.regularInPlaceholder;
+    if (selected.regularOutPlaceholder) updates.dutyEndTime = selected.regularOutPlaceholder;
+    if (selected.nightInPlaceholder) updates.nightDutyStartTime = selected.nightInPlaceholder;
+    if (selected.nightOutPlaceholder) updates.nightDutyEndTime = selected.nightOutPlaceholder;
+    if (selected.morningInPlaceholder) updates.morningShiftStartTime = selected.morningInPlaceholder;
+    if (selected.morningOutPlaceholder) updates.morningShiftEndTime = selected.morningOutPlaceholder;
+
+    const current = getValues();
+    Object.entries(updates).forEach(([key, value]) => {
+      setValue(key as keyof FormValues, value as never, { shouldValidate: true });
+    });
+
+    setFormData({
+      departmentId: selectedDepartmentId,
+      dutyStartTime: updates.dutyStartTime ?? current.dutyStartTime,
+      dutyEndTime: updates.dutyEndTime ?? current.dutyEndTime,
+      nightDutyStartTime: updates.nightDutyStartTime ?? current.nightDutyStartTime ?? "",
+      nightDutyEndTime: updates.nightDutyEndTime ?? current.nightDutyEndTime ?? "",
+      morningShiftStartTime: updates.morningShiftStartTime ?? current.morningShiftStartTime ?? "",
+      morningShiftEndTime: updates.morningShiftEndTime ?? current.morningShiftEndTime ?? "",
+    });
+  }, [selectedDepartmentId, departments, setValue, setFormData, getValues]);
 
   const onSubmit = (data: FormValues) => {
     setFormData({

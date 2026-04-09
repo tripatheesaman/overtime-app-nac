@@ -29,7 +29,5 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       { success: false, error: String(error) },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

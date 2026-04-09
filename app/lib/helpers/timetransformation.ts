@@ -1,13 +1,25 @@
 import { AttendanceRecord } from "@/app/types/InputFormType";
 
-// Get thresholds from environment variables with fallback to 30 minutes
-const IN_TIME_THRESHOLD = Number(process.env.NEXT_PUBLIC_IN_TIME_THRESHOLD) || 30;
-const OUT_TIME_THRESHOLD = Number(process.env.NEXT_PUBLIC_OUT_TIME_THRESHOLD) || 30;
+type TimeTransformationConfig = {
+  inTimeThreshold?: number;
+  outTimeThreshold?: number;
+  specialWindowStart?: string;
+  specialWindowEnd?: string;
+  specialWindowLowerCutoff?: string;
+  specialWindowUpperCutoff?: string;
+};
+
+const parseHHMMToMinutes = (value: string, fallback: number) => {
+  const [h, m] = value.split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return fallback;
+  return h * 60 + m;
+};
 
 const convertDecimalToRoundedTime = (
   decimalTime: number,
   isInTime: boolean = true,
-  dutyTime: string
+  dutyTime: string,
+  config: TimeTransformationConfig = {}
 ): string => {
   if (decimalTime === null || decimalTime === undefined) return "--"; // Handle missing values
 
@@ -21,10 +33,10 @@ const convertDecimalToRoundedTime = (
   // - if > 05:15 and < 05:35 => 05:30
   // - if <= 05:15 => 05:00
   // - if >= 05:35 => 06:00
-  const specialWindowStart = 4 * 60 + 50; // 04:50
-  const specialWindowEnd = 6 * 60; // 06:00
-  const fiveFifteen = 5 * 60 + 15; // 05:15
-  const fiveThirtyFive = 5 * 60 + 35; // 05:35
+  const specialWindowStart = parseHHMMToMinutes(config.specialWindowStart ?? "04:50", 4 * 60 + 50);
+  const specialWindowEnd = parseHHMMToMinutes(config.specialWindowEnd ?? "06:00", 6 * 60);
+  const fiveFifteen = parseHHMMToMinutes(config.specialWindowLowerCutoff ?? "05:15", 5 * 60 + 15);
+  const fiveThirtyFive = parseHHMMToMinutes(config.specialWindowUpperCutoff ?? "05:35", 5 * 60 + 35);
   if (isInTime && timeInMinutes >= specialWindowStart && timeInMinutes < specialWindowEnd) {
     if (timeInMinutes > fiveFifteen && timeInMinutes < fiveThirtyFive) {
       return "05:30";
@@ -43,7 +55,9 @@ const convertDecimalToRoundedTime = (
   const timeDiff = Math.abs(timeInMinutes - dutyTimeInMinutes);
 
   // If within configured threshold of duty time, snap to duty time
-  const threshold = isInTime ? IN_TIME_THRESHOLD : OUT_TIME_THRESHOLD;
+  const inThreshold = Number(config.inTimeThreshold ?? 30);
+  const outThreshold = Number(config.outTimeThreshold ?? 30);
+  const threshold = isInTime ? inThreshold : outThreshold;
   if (timeDiff < threshold) {
     hours = dutyHours;
     minutes = dutyMinutes;
@@ -53,7 +67,7 @@ const convertDecimalToRoundedTime = (
   // General rounding rules (no :30 here) — use thresholds to decide direction
   if (isInTime) {
     // For in time: if minutes > IN_TIME_THRESHOLD => round up, else round down
-    if (minutes > IN_TIME_THRESHOLD) {
+    if (minutes > inThreshold) {
       minutes = 0;
       hours += 1;
     } else {
@@ -61,7 +75,7 @@ const convertDecimalToRoundedTime = (
     }
   } else {
     // For out time: if minutes >= OUT_TIME_THRESHOLD => round up, else round down
-    if (minutes >= OUT_TIME_THRESHOLD) {
+    if (minutes >= outThreshold) {
       minutes = 0;
       hours += 1;
     } else {
@@ -72,7 +86,12 @@ const convertDecimalToRoundedTime = (
   return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
 };
 
-const processRawTime = (attendanceRecords: AttendanceRecord[], dutyStartTime: string, dutyEndTime: string): AttendanceRecord[] => {
+const processRawTime = (
+  attendanceRecords: AttendanceRecord[],
+  dutyStartTime: string,
+  dutyEndTime: string,
+  config: TimeTransformationConfig = {}
+): AttendanceRecord[] => {
   if (!attendanceRecords.length || !Array.isArray(attendanceRecords)) {
     return [];
   }
@@ -80,7 +99,7 @@ const processRawTime = (attendanceRecords: AttendanceRecord[], dutyStartTime: st
   return attendanceRecords.map((record) => {
     // First, convert in-time normally
     const inTime = record.inTime
-      ? convertDecimalToRoundedTime(Number(record.inTime), true, dutyStartTime)
+      ? convertDecimalToRoundedTime(Number(record.inTime), true, dutyStartTime, config)
       : "NA";
     
     // For out-time, check if we need special handling first
@@ -96,7 +115,7 @@ const processRawTime = (attendanceRecords: AttendanceRecord[], dutyStartTime: st
         outTime = `${outHours.toString().padStart(2, "0")}:30`;
       } else {
         // Use normal rounding logic
-        outTime = convertDecimalToRoundedTime(outDecimalTime, false, dutyEndTime);
+        outTime = convertDecimalToRoundedTime(outDecimalTime, false, dutyEndTime, config);
       }
     }
 

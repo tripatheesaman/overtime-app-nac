@@ -6,6 +6,7 @@ import FormatNightTime from "@/app/lib/helpers/formatNightTime";
 import ProcessBlankTimes from "@/app/lib/helpers/processblanktimes";
 import CalculateOvertime from "@/app/lib/helpers/calculateovertime";
 import prisma from "@/app/lib/prisma";
+import { getAppSettings } from "@/app/lib/settings";
 
 type OvertimeResultRow = {
   beforeDuty?: [string, string];
@@ -105,13 +106,26 @@ export const POST = async (req: NextRequest) => {
     );
   }
   let processedAttendanceData;
+  const appSettings = await getAppSettings();
   try {
     const recordsWithShiftInfo = data.inOutTimes.map((record, index) => ({
       ...record,
       isMorningShift: data.morningShiftDays?.includes(index + 1) || false
     }));
     
-    processedAttendanceData = processRawTime(recordsWithShiftInfo, data.dutyStartTime, data.dutyEndTime);
+    processedAttendanceData = processRawTime(
+      recordsWithShiftInfo,
+      data.dutyStartTime,
+      data.dutyEndTime,
+      {
+        inTimeThreshold: appSettings.inTimeThreshold,
+        outTimeThreshold: appSettings.outTimeThreshold,
+        specialWindowStart: appSettings.specialWindowStart,
+        specialWindowEnd: appSettings.specialWindowEnd,
+        specialWindowLowerCutoff: appSettings.specialWindowLowerCutoff,
+        specialWindowUpperCutoff: appSettings.specialWindowUpperCutoff,
+      }
+    );
     if (!processedAttendanceData || processedAttendanceData.length === 0) {
       throw new Error("Invalid data after processing!");
     }
@@ -220,7 +234,12 @@ export const POST = async (req: NextRequest) => {
   );
   const numberOfOddShifts = normalizedRows.reduce(
     (sum, row) =>
-      sum + (row.hasNightOvertime || row.hasMorningOvertime ? 1 : 0),
+      sum +
+      ((row.hasNightOvertime || row.hasMorningOvertime) &&
+      Math.max(Number(row.totalNightHours) || 0, Number(row.totalHours) || 0) >=
+        appSettings.oddShiftMinHours
+        ? 1
+        : 0),
     0
   );
   const monthName =
