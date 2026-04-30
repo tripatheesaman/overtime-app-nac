@@ -36,21 +36,35 @@ let columnsEnsured = false;
 
 async function ensureSettingsColumns() {
   if (columnsEnsured) return;
-  const statements = [
-    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS inTimeThreshold INT NULL",
-    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS outTimeThreshold INT NULL",
-    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS oddShiftMinHours DOUBLE NULL",
-    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS doubleOffdayStartDay INT NULL",
-    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS dayBeforeOffReductionHours DOUBLE NULL",
-    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS overtimeGraceMinutes INT NULL",
-    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS specialWindowStart VARCHAR(5) NULL",
-    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS specialWindowEnd VARCHAR(5) NULL",
-    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS specialWindowLowerCutoff VARCHAR(5) NULL",
-    "ALTER TABLE settings ADD COLUMN IF NOT EXISTS specialWindowUpperCutoff VARCHAR(5) NULL",
+  const columns: Array<{ name: string; definition: string }> = [
+    { name: "inTimeThreshold", definition: "INT NULL" },
+    { name: "outTimeThreshold", definition: "INT NULL" },
+    { name: "oddShiftMinHours", definition: "DOUBLE NULL" },
+    { name: "doubleOffdayStartDay", definition: "INT NULL" },
+    { name: "dayBeforeOffReductionHours", definition: "DOUBLE NULL" },
+    { name: "overtimeGraceMinutes", definition: "INT NULL" },
+    { name: "specialWindowStart", definition: "VARCHAR(5) NULL" },
+    { name: "specialWindowEnd", definition: "VARCHAR(5) NULL" },
+    { name: "specialWindowLowerCutoff", definition: "VARCHAR(5) NULL" },
+    { name: "specialWindowUpperCutoff", definition: "VARCHAR(5) NULL" },
   ];
-  for (const sql of statements) {
+
+  for (const column of columns) {
     try {
-      await prisma.$executeRawUnsafe(sql);
+      const existing = await prisma.$queryRawUnsafe<Array<{ count: number }>>(
+        `SELECT COUNT(*) as count
+         FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'settings'
+           AND COLUMN_NAME = ?`,
+        column.name
+      );
+      const exists = Number(existing?.[0]?.count ?? 0) > 0;
+      if (!exists) {
+        await prisma.$executeRawUnsafe(
+          `ALTER TABLE settings ADD COLUMN ${column.name} ${column.definition}`
+        );
+      }
     } catch {
       // Ignore to maintain compatibility with existing DB variants.
     }
