@@ -42,6 +42,9 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [settings, setSettings] = useState<SettingsData>(defaultSettings);
+  const [doubleOffdayStartDayInput, setDoubleOffdayStartDayInput] = useState(
+    String(defaultSettings.doubleOffdayStartDay)
+  );
 
   const fetchSettings = async () => {
     setLoading(true);
@@ -49,7 +52,9 @@ export default function AdminSettingsPage() {
       const res = await fetch("/api/settings");
       const data = await res.json();
       if (data?.success && data.data) {
-        setSettings({ ...defaultSettings, ...data.data });
+        const merged = { ...defaultSettings, ...data.data };
+        setSettings(merged);
+        setDoubleOffdayStartDayInput(String(merged.doubleOffdayStartDay));
       }
     } finally {
       setLoading(false);
@@ -63,13 +68,28 @@ export default function AdminSettingsPage() {
   const save = async () => {
     setLoading(true);
     try {
+      const parsedDoubleOffdayStartDay = Number.parseInt(
+        doubleOffdayStartDayInput,
+        10
+      );
+      const normalizedDoubleOffdayStartDay = Number.isFinite(
+        parsedDoubleOffdayStartDay
+      )
+        ? Math.min(31, Math.max(1, parsedDoubleOffdayStartDay))
+        : defaultSettings.doubleOffdayStartDay;
+      const payload = {
+        ...settings,
+        doubleOffdayStartDay: normalizedDoubleOffdayStartDay,
+      };
       const res = await fetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || "Failed");
+      setSettings(payload);
+      setDoubleOffdayStartDayInput(String(normalizedDoubleOffdayStartDay));
       alert("All settings saved successfully.");
     } catch (e) {
       console.error(e);
@@ -270,13 +290,19 @@ export default function AdminSettingsPage() {
                   type="number"
                   min={1}
                   max={31}
-                  value={settings.doubleOffdayStartDay}
-                  onChange={(e) =>
+                  value={doubleOffdayStartDayInput}
+                  onChange={(e) => setDoubleOffdayStartDayInput(e.target.value)}
+                  onBlur={() => {
+                    const parsed = Number.parseInt(doubleOffdayStartDayInput, 10);
+                    const normalized = Number.isFinite(parsed)
+                      ? Math.min(31, Math.max(1, parsed))
+                      : defaultSettings.doubleOffdayStartDay;
                     setSettings({
                       ...settings,
-                      doubleOffdayStartDay: Number(e.target.value),
-                    })
-                  }
+                      doubleOffdayStartDay: normalized,
+                    });
+                    setDoubleOffdayStartDayInput(String(normalized));
+                  }}
                 />
               </AdminField>
               <AdminField
