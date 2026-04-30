@@ -96,6 +96,10 @@ function normalizeRole(role: string) {
   return (role || "superadmin").trim().toLowerCase();
 }
 
+function normalizeUsername(username: string) {
+  return (username || "").trim().toLowerCase();
+}
+
 export async function getAdminSession(
   req: NextRequest
 ): Promise<AdminSession | null> {
@@ -107,7 +111,10 @@ export async function getAdminSession(
 
 export function canMutateGlobalSettings(session: AdminSession | null): boolean {
   if (!session) return false;
-  return normalizeRole(session.role) === "superadmin";
+  return (
+    normalizeRole(session.role) === "superadmin" ||
+    normalizeUsername(session.username) === "superadmin"
+  );
 }
 
 export function canEditOperationalData(session: AdminSession | null): boolean {
