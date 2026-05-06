@@ -118,12 +118,12 @@ export const POST = async (req: NextRequest) => {
       data.dutyStartTime,
       data.dutyEndTime,
       {
-        inTimeThreshold: appSettings.inTimeThreshold,
-        outTimeThreshold: appSettings.outTimeThreshold,
-        specialWindowStart: appSettings.specialWindowStart,
-        specialWindowEnd: appSettings.specialWindowEnd,
-        specialWindowLowerCutoff: appSettings.specialWindowLowerCutoff,
-        specialWindowUpperCutoff: appSettings.specialWindowUpperCutoff,
+        inTimeThreshold: appSettings.cutoffThresholds.inTimeThreshold,
+        outTimeThreshold: appSettings.cutoffThresholds.outTimeThreshold,
+        specialWindowStart: appSettings.cutoffThresholds.specialWindowStart,
+        specialWindowEnd: appSettings.cutoffThresholds.specialWindowEnd,
+        specialWindowLowerCutoff: appSettings.cutoffThresholds.specialWindowLowerCutoff,
+        specialWindowUpperCutoff: appSettings.cutoffThresholds.specialWindowUpperCutoff,
       }
     );
     if (!processedAttendanceData || processedAttendanceData.length === 0) {
@@ -202,7 +202,15 @@ export const POST = async (req: NextRequest) => {
     data.morningShiftDays,
     data.morningShiftStartTime,
     data.morningShiftEndTime,
-    data.departmentId
+    data.departmentId,
+    {
+      regularStart: data.eightHourDutyStartTime,
+      regularEnd: data.eightHourDutyEndTime,
+      nightStart: data.eightHourNightDutyStartTime,
+      nightEnd: data.eightHourNightDutyEndTime,
+      morningStart: data.eightHourMorningShiftStartTime,
+      morningEnd: data.eightHourMorningShiftEndTime,
+    }
     )) ?? [];
 
   const normalizedRows = overTimeData as OvertimeResultRow[];
@@ -233,13 +241,17 @@ export const POST = async (req: NextRequest) => {
     0
   );
   const numberOfOddShifts = normalizedRows.reduce(
-    (sum, row) =>
-      sum +
-      ((row.hasNightOvertime || row.hasMorningOvertime) &&
-      Math.max(Number(row.totalNightHours) || 0, Number(row.totalHours) || 0) >=
-        appSettings.oddShiftMinHours
-        ? 1
-        : 0),
+    (sum, row) => {
+      const nightHours = Number(row.totalNightHours) || 0;
+      const dayHours = Number(row.totalHours) || 0;
+      const nightQualified =
+        Boolean(row.hasNightOvertime) &&
+        nightHours >= appSettings.cutoffThresholds.oddShiftNightMinHours;
+      const dayQualified =
+        Boolean(row.hasMorningOvertime) &&
+        dayHours >= appSettings.cutoffThresholds.oddShiftDayMinHours;
+      return sum + (nightQualified || dayQualified ? 1 : 0);
+    },
     0
   );
   const monthName =

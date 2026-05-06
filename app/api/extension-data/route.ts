@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
       
       return NextResponse.json({ 
         success: true, 
-        data: { ...monthDetails, ...settings }
+        data: { ...monthDetails, settings, ...settings.cutoffThresholds }
       });
     }
 

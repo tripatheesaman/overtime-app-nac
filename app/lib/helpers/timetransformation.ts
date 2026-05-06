@@ -15,15 +15,33 @@ const parseHHMMToMinutes = (value: string, fallback: number) => {
   return h * 60 + m;
 };
 
+const parseRawTimeToMinutes = (value: string | number): number | null => {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return null;
+    return value * 24 * 60;
+  }
+  const normalized = value.trim();
+  if (!normalized) return null;
+  if (/^\d{1,2}:\d{2}$/.test(normalized)) {
+    const [h, m] = normalized.split(":").map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m) || h < 0 || h > 23 || m < 0 || m > 59) {
+      return null;
+    }
+    return h * 60 + m;
+  }
+  const numeric = Number(normalized);
+  if (!Number.isFinite(numeric)) return null;
+  return numeric * 24 * 60;
+};
+
 const convertDecimalToRoundedTime = (
-  decimalTime: number,
+  rawTime: string | number,
   isInTime: boolean = true,
   dutyTime: string,
   config: TimeTransformationConfig = {}
 ): string => {
-  if (decimalTime === null || decimalTime === undefined) return "--"; // Handle missing values
-
-  const totalMinutes = decimalTime * 24 * 60; // Convert fraction to total minutes
+  const totalMinutes = parseRawTimeToMinutes(rawTime);
+  if (totalMinutes === null) return "--";
   let hours = Math.floor(totalMinutes / 60); // Extract hours
   let minutes = Math.round(totalMinutes % 60); // Extract minutes
   const timeInMinutes = hours * 60 + minutes;
@@ -99,14 +117,16 @@ const processRawTime = (
   return attendanceRecords.map((record) => {
     // First, convert in-time normally
     const inTime = record.inTime
-      ? convertDecimalToRoundedTime(Number(record.inTime), true, dutyStartTime, config)
+      ? convertDecimalToRoundedTime(record.inTime, true, dutyStartTime, config)
       : "NA";
     
     // For out-time, check if we need special handling first
     let outTime = "NA";
     if (record.outTime) {
-      const outDecimalTime = Number(record.outTime);
-      const totalMinutes = outDecimalTime * 24 * 60;
+      const totalMinutes = parseRawTimeToMinutes(record.outTime);
+      if (totalMinutes === null) {
+        return { inTime, outTime: "NA" };
+      }
       const outHours = Math.floor(totalMinutes / 60);
       const outMinutes = Math.round(totalMinutes % 60);
       
@@ -115,7 +135,7 @@ const processRawTime = (
         outTime = `${outHours.toString().padStart(2, "0")}:30`;
       } else {
         // Use normal rounding logic
-        outTime = convertDecimalToRoundedTime(outDecimalTime, false, dutyEndTime, config);
+        outTime = convertDecimalToRoundedTime(record.outTime, false, dutyEndTime, config);
       }
     }
 

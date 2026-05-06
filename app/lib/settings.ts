@@ -1,190 +1,194 @@
 import prisma from "@/app/lib/prisma";
+import {
+  AppSettings,
+  DEFAULT_APP_SETTINGS,
+  DayRange,
+  ShiftPlaceholders,
+} from "@/app/types/settings";
+export type { AppSettings } from "@/app/types/settings";
 
-export type AppSettings = {
-  isWinter: boolean;
-  winterStartDay: number | null;
-  winterEndDay: number | null;
-  inTimeThreshold: number;
-  outTimeThreshold: number;
-  oddShiftMinHours: number;
-  doubleOffdayStartDay: number;
-  dayBeforeOffReductionHours: number;
-  overtimeGraceMinutes: number;
-  specialWindowStart: string;
-  specialWindowEnd: string;
-  specialWindowLowerCutoff: string;
-  specialWindowUpperCutoff: string;
-};
+let configColumnEnsured = false;
 
-export const DEFAULT_APP_SETTINGS: AppSettings = {
-  isWinter: false,
-  winterStartDay: null,
-  winterEndDay: null,
-  inTimeThreshold: 30,
-  outTimeThreshold: 30,
-  oddShiftMinHours: 0,
-  doubleOffdayStartDay: 23,
-  dayBeforeOffReductionHours: 2,
-  overtimeGraceMinutes: 40,
-  specialWindowStart: "04:50",
-  specialWindowEnd: "06:00",
-  specialWindowLowerCutoff: "05:15",
-  specialWindowUpperCutoff: "05:35",
-};
-
-let columnsEnsured = false;
-
-async function ensureSettingsColumns() {
-  if (columnsEnsured) return;
-  const columns: Array<{ name: string; definition: string }> = [
-    { name: "inTimeThreshold", definition: "INT NULL" },
-    { name: "outTimeThreshold", definition: "INT NULL" },
-    { name: "oddShiftMinHours", definition: "DOUBLE NULL" },
-    { name: "doubleOffdayStartDay", definition: "INT NULL" },
-    { name: "dayBeforeOffReductionHours", definition: "DOUBLE NULL" },
-    { name: "overtimeGraceMinutes", definition: "INT NULL" },
-    { name: "specialWindowStart", definition: "VARCHAR(5) NULL" },
-    { name: "specialWindowEnd", definition: "VARCHAR(5) NULL" },
-    { name: "specialWindowLowerCutoff", definition: "VARCHAR(5) NULL" },
-    { name: "specialWindowUpperCutoff", definition: "VARCHAR(5) NULL" },
-  ];
-
-  for (const column of columns) {
-    try {
-      const existing = await prisma.$queryRawUnsafe<Array<{ count: number }>>(
-        `SELECT COUNT(*) as count
-         FROM information_schema.COLUMNS
-         WHERE TABLE_SCHEMA = DATABASE()
-           AND TABLE_NAME = 'settings'
-           AND COLUMN_NAME = ?`,
-        column.name
-      );
-      const exists = Number(existing?.[0]?.count ?? 0) > 0;
-      if (!exists) {
-        await prisma.$executeRawUnsafe(
-          `ALTER TABLE settings ADD COLUMN ${column.name} ${column.definition}`
-        );
-      }
-    } catch {
-      // Ignore to maintain compatibility with existing DB variants.
-    }
+const ensureConfigColumn = async () => {
+  if (configColumnEnsured) return;
+  const rows = await prisma.$queryRawUnsafe<Array<{ count: number }>>(
+    `SELECT COUNT(*) as count
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'settings'
+       AND COLUMN_NAME = 'config'`
+  );
+  const exists = Number(rows?.[0]?.count ?? 0) > 0;
+  if (!exists) {
+    await prisma.$executeRawUnsafe("ALTER TABLE settings ADD COLUMN config JSON NULL");
   }
-  columnsEnsured = true;
-}
+  configColumnEnsured = true;
+};
 
-export async function getAppSettings(): Promise<AppSettings> {
-  await ensureSettingsColumns();
-  try {
-    const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
-      `SELECT 
-        isWinter, winterStartDay, winterEndDay,
-        inTimeThreshold, outTimeThreshold, oddShiftMinHours,
-        doubleOffdayStartDay, dayBeforeOffReductionHours, overtimeGraceMinutes,
-        specialWindowStart, specialWindowEnd, specialWindowLowerCutoff, specialWindowUpperCutoff
-       FROM settings WHERE id = 1 LIMIT 1`
-    );
-    const row = rows?.[0];
-    if (!row) return DEFAULT_APP_SETTINGS;
-    return {
-      isWinter: Boolean(row.isWinter ?? DEFAULT_APP_SETTINGS.isWinter),
-      winterStartDay:
-        row.winterStartDay == null
-          ? DEFAULT_APP_SETTINGS.winterStartDay
-          : Number(row.winterStartDay),
-      winterEndDay:
-        row.winterEndDay == null
-          ? DEFAULT_APP_SETTINGS.winterEndDay
-          : Number(row.winterEndDay),
+const isValidDay = (value: unknown) =>
+  Number.isInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 31;
+
+const normalizeRange = (value: unknown, fallback: DayRange): DayRange => {
+  const candidate = (value as DayRange | undefined) ?? fallback;
+  const startDay = isValidDay(candidate.startDay) ? Number(candidate.startDay) : fallback.startDay;
+  const endRaw = isValidDay(candidate.endDay) ? Number(candidate.endDay) : fallback.endDay;
+  const endDay = Math.max(startDay, endRaw);
+  return { startDay, endDay };
+};
+
+const normalizeShiftPlaceholders = (
+  value: unknown,
+  fallback: ShiftPlaceholders
+): ShiftPlaceholders => {
+  const source = (value as Partial<ShiftPlaceholders> | undefined) ?? {};
+  return {
+    regularIn: String(source.regularIn ?? fallback.regularIn),
+    regularOut: String(source.regularOut ?? fallback.regularOut),
+    nightIn: String(source.nightIn ?? fallback.nightIn),
+    nightOut: String(source.nightOut ?? fallback.nightOut),
+    morningIn: String(source.morningIn ?? fallback.morningIn),
+    morningOut: String(source.morningOut ?? fallback.morningOut),
+  };
+};
+
+const normalizeSettings = (value: unknown): AppSettings => {
+  const source = (value as Partial<AppSettings> | undefined) ?? {};
+  return {
+    normal: {
+      dayBeforeOffReductionHours: Number(
+        source.normal?.dayBeforeOffReductionHours ??
+          DEFAULT_APP_SETTINGS.normal.dayBeforeOffReductionHours
+      ),
+    },
+    cutoffThresholds: {
       inTimeThreshold: Number(
-        row.inTimeThreshold ?? DEFAULT_APP_SETTINGS.inTimeThreshold
+        source.cutoffThresholds?.inTimeThreshold ??
+          DEFAULT_APP_SETTINGS.cutoffThresholds.inTimeThreshold
       ),
       outTimeThreshold: Number(
-        row.outTimeThreshold ?? DEFAULT_APP_SETTINGS.outTimeThreshold
+        source.cutoffThresholds?.outTimeThreshold ??
+          DEFAULT_APP_SETTINGS.cutoffThresholds.outTimeThreshold
       ),
-      oddShiftMinHours: Number(
-        row.oddShiftMinHours ?? DEFAULT_APP_SETTINGS.oddShiftMinHours
+      specialWindowStart: String(
+        source.cutoffThresholds?.specialWindowStart ??
+          DEFAULT_APP_SETTINGS.cutoffThresholds.specialWindowStart
       ),
-      doubleOffdayStartDay: Number(
-        row.doubleOffdayStartDay ?? DEFAULT_APP_SETTINGS.doubleOffdayStartDay
-      ),
-      dayBeforeOffReductionHours: Number(
-        row.dayBeforeOffReductionHours ??
-          DEFAULT_APP_SETTINGS.dayBeforeOffReductionHours
-      ),
-      overtimeGraceMinutes: Number(
-        row.overtimeGraceMinutes ?? DEFAULT_APP_SETTINGS.overtimeGraceMinutes
-      ),
-      specialWindowStart:
-        String(row.specialWindowStart ?? DEFAULT_APP_SETTINGS.specialWindowStart),
       specialWindowEnd: String(
-        row.specialWindowEnd ?? DEFAULT_APP_SETTINGS.specialWindowEnd
+        source.cutoffThresholds?.specialWindowEnd ??
+          DEFAULT_APP_SETTINGS.cutoffThresholds.specialWindowEnd
       ),
       specialWindowLowerCutoff: String(
-        row.specialWindowLowerCutoff ??
-          DEFAULT_APP_SETTINGS.specialWindowLowerCutoff
+        source.cutoffThresholds?.specialWindowLowerCutoff ??
+          DEFAULT_APP_SETTINGS.cutoffThresholds.specialWindowLowerCutoff
       ),
       specialWindowUpperCutoff: String(
-        row.specialWindowUpperCutoff ??
-          DEFAULT_APP_SETTINGS.specialWindowUpperCutoff
+        source.cutoffThresholds?.specialWindowUpperCutoff ??
+          DEFAULT_APP_SETTINGS.cutoffThresholds.specialWindowUpperCutoff
       ),
-    };
+      oddShiftDayMinHours: Number(
+        source.cutoffThresholds?.oddShiftDayMinHours ??
+          DEFAULT_APP_SETTINGS.cutoffThresholds.oddShiftDayMinHours
+      ),
+      oddShiftNightMinHours: Number(
+        source.cutoffThresholds?.oddShiftNightMinHours ??
+          DEFAULT_APP_SETTINGS.cutoffThresholds.oddShiftNightMinHours
+      ),
+      afterDutyGraceMinutes: Number(
+        source.cutoffThresholds?.afterDutyGraceMinutes ??
+          DEFAULT_APP_SETTINGS.cutoffThresholds.afterDutyGraceMinutes
+      ),
+    },
+    shifts: {
+      enableNightDuty: Boolean(
+        source.shifts?.enableNightDuty ?? DEFAULT_APP_SETTINGS.shifts.enableNightDuty
+      ),
+      enableMorningShift: Boolean(
+        source.shifts?.enableMorningShift ?? DEFAULT_APP_SETTINGS.shifts.enableMorningShift
+      ),
+    },
+    winterOverlay: {
+      enabled: Boolean(
+        source.winterOverlay?.enabled ?? DEFAULT_APP_SETTINGS.winterOverlay.enabled
+      ),
+      range: normalizeRange(
+        source.winterOverlay?.range,
+        DEFAULT_APP_SETTINGS.winterOverlay.range
+      ),
+    },
+    doubleOffOverlay: {
+      enabled: Boolean(
+        source.doubleOffOverlay?.enabled ?? DEFAULT_APP_SETTINGS.doubleOffOverlay.enabled
+      ),
+      range: normalizeRange(
+        source.doubleOffOverlay?.range,
+        DEFAULT_APP_SETTINGS.doubleOffOverlay.range
+      ),
+    },
+    noFridayOverlay: {
+      enabled: Boolean(
+        source.noFridayOverlay?.enabled ?? DEFAULT_APP_SETTINGS.noFridayOverlay.enabled
+      ),
+      range: normalizeRange(
+        source.noFridayOverlay?.range,
+        DEFAULT_APP_SETTINGS.noFridayOverlay.range
+      ),
+    },
+    eightHourOverlay: {
+      enabled: Boolean(
+        source.eightHourOverlay?.enabled ?? DEFAULT_APP_SETTINGS.eightHourOverlay.enabled
+      ),
+      range: normalizeRange(
+        source.eightHourOverlay?.range,
+        DEFAULT_APP_SETTINGS.eightHourOverlay.range
+      ),
+      defaults: normalizeShiftPlaceholders(
+        source.eightHourOverlay?.defaults,
+        DEFAULT_APP_SETTINGS.eightHourOverlay.defaults
+      ),
+    },
+    placeholders: {
+      normal: normalizeShiftPlaceholders(
+        source.placeholders?.normal,
+        DEFAULT_APP_SETTINGS.placeholders.normal
+      ),
+      winter: normalizeShiftPlaceholders(
+        source.placeholders?.winter,
+        DEFAULT_APP_SETTINGS.placeholders.winter
+      ),
+    },
+  };
+};
+
+export async function getAppSettings(): Promise<AppSettings> {
+  try {
+    await ensureConfigColumn();
+    const rows = await prisma.$queryRawUnsafe<Array<{ config: unknown }>>(
+      "SELECT config FROM settings WHERE id = 1 LIMIT 1"
+    );
+    const row = rows?.[0];
+    if (!row || !row.config) return DEFAULT_APP_SETTINGS;
+    return normalizeSettings(row.config);
   } catch {
     return DEFAULT_APP_SETTINGS;
   }
 }
 
-export async function upsertAppSettings(
-  input: Partial<AppSettings>
-): Promise<void> {
-  await ensureSettingsColumns();
-  const merged: AppSettings = { ...DEFAULT_APP_SETTINGS, ...(await getAppSettings()), ...input };
+export async function upsertAppSettings(input: Partial<AppSettings>): Promise<void> {
+  await ensureConfigColumn();
+  const merged = normalizeSettings({ ...(await getAppSettings()), ...input });
   const exists = await prisma.$queryRawUnsafe<Array<{ id: number }>>(
     "SELECT id FROM settings WHERE id = 1 LIMIT 1"
   );
   if (exists.length > 0) {
     await prisma.$executeRawUnsafe(
-      `UPDATE settings SET
-        isWinter = ?, winterStartDay = ?, winterEndDay = ?,
-        inTimeThreshold = ?, outTimeThreshold = ?, oddShiftMinHours = ?,
-        doubleOffdayStartDay = ?, dayBeforeOffReductionHours = ?, overtimeGraceMinutes = ?,
-        specialWindowStart = ?, specialWindowEnd = ?, specialWindowLowerCutoff = ?, specialWindowUpperCutoff = ?
-       WHERE id = 1`,
-      merged.isWinter ? 1 : 0,
-      merged.winterStartDay,
-      merged.winterEndDay,
-      merged.inTimeThreshold,
-      merged.outTimeThreshold,
-      merged.oddShiftMinHours,
-      merged.doubleOffdayStartDay,
-      merged.dayBeforeOffReductionHours,
-      merged.overtimeGraceMinutes,
-      merged.specialWindowStart,
-      merged.specialWindowEnd,
-      merged.specialWindowLowerCutoff,
-      merged.specialWindowUpperCutoff
+      "UPDATE settings SET config = ? WHERE id = 1",
+      JSON.stringify(merged)
     );
-  } else {
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO settings (
-        id, isWinter, winterStartDay, winterEndDay,
-        inTimeThreshold, outTimeThreshold, oddShiftMinHours,
-        doubleOffdayStartDay, dayBeforeOffReductionHours, overtimeGraceMinutes,
-        specialWindowStart, specialWindowEnd, specialWindowLowerCutoff, specialWindowUpperCutoff
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      1,
-      merged.isWinter ? 1 : 0,
-      merged.winterStartDay,
-      merged.winterEndDay,
-      merged.inTimeThreshold,
-      merged.outTimeThreshold,
-      merged.oddShiftMinHours,
-      merged.doubleOffdayStartDay,
-      merged.dayBeforeOffReductionHours,
-      merged.overtimeGraceMinutes,
-      merged.specialWindowStart,
-      merged.specialWindowEnd,
-      merged.specialWindowLowerCutoff,
-      merged.specialWindowUpperCutoff
-    );
+    return;
   }
+  await prisma.$executeRawUnsafe(
+    "INSERT INTO settings (id, config) VALUES (?, ?)",
+    1,
+    JSON.stringify(merged)
+  );
 }

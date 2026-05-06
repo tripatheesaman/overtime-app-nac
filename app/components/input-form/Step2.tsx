@@ -11,12 +11,6 @@ interface Department {
   name: string;
   code: string;
   templateFile: string;
-  regularInPlaceholder?: string | null;
-  regularOutPlaceholder?: string | null;
-  morningInPlaceholder?: string | null;
-  morningOutPlaceholder?: string | null;
-  nightInPlaceholder?: string | null;
-  nightOutPlaceholder?: string | null;
 }
 
 const schema = z
@@ -34,6 +28,12 @@ const schema = z
     morningShiftEnabled: z.boolean(),
     morningShiftStartTime: z.string().optional(),
     morningShiftEndTime: z.string().optional(),
+    eightHourDutyStartTime: z.string().optional(),
+    eightHourDutyEndTime: z.string().optional(),
+    eightHourNightDutyStartTime: z.string().optional(),
+    eightHourNightDutyEndTime: z.string().optional(),
+    eightHourMorningShiftStartTime: z.string().optional(),
+    eightHourMorningShiftEndTime: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.nightDutyEnabled) {
@@ -68,16 +68,34 @@ const schema = z
         });
       }
     }
+    const requiresEightHourTimes = [
+      { key: "eightHourDutyStartTime", value: data.eightHourDutyStartTime },
+      { key: "eightHourDutyEndTime", value: data.eightHourDutyEndTime },
+      { key: "eightHourNightDutyStartTime", value: data.eightHourNightDutyStartTime },
+      { key: "eightHourNightDutyEndTime", value: data.eightHourNightDutyEndTime },
+      { key: "eightHourMorningShiftStartTime", value: data.eightHourMorningShiftStartTime },
+      { key: "eightHourMorningShiftEndTime", value: data.eightHourMorningShiftEndTime },
+    ];
+    for (const item of requiresEightHourTimes) {
+      if (item.value && !baseTimeRegex.test(item.value)) {
+        ctx.addIssue({
+          path: [item.key],
+          code: z.ZodIssueCode.custom,
+          message: "Invalid time format! Use HH:MM",
+        });
+      }
+    }
   });
 
 type FormValues = z.infer<typeof schema>;
 
 const Step2 = () => {
   const { setStep, formData, setFormData } = useFormContext();
-  const [nightDutyEnabled, setNightDutyEnabled] = useState(!!formData.nightDutyStartTime);
-  const [morningShiftEnabled, setMorningShiftEnabled] = useState(!!formData.morningShiftStartTime);
+  const [nightDutyEnabled, setNightDutyEnabled] = useState(false);
+  const [morningShiftEnabled, setMorningShiftEnabled] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loadingDepartments, setLoadingDepartments] = useState(true);
+  const [isEightHourOverlayEnabled, setIsEightHourOverlayEnabled] = useState(false);
 
   const {
     register,
@@ -86,20 +104,66 @@ const Step2 = () => {
     setValue,
     watch,
     getValues,
+    setError,
   } = useForm<FormValues>({
     defaultValues: {
       departmentId: formData.departmentId || 0,
       dutyStartTime: formData.dutyStartTime || "10:00",
       dutyEndTime: formData.dutyEndTime || "17:00",
-      nightDutyEnabled: !!formData.nightDutyStartTime,
-      nightDutyStartTime: formData.nightDutyStartTime || "17:00",
-      nightDutyEndTime: formData.nightDutyEndTime || "00:00",
-      morningShiftEnabled: !!formData.morningShiftStartTime,
-      morningShiftStartTime: formData.morningShiftStartTime || "05:30",
-      morningShiftEndTime: formData.morningShiftEndTime || "12:30",
+      nightDutyEnabled: false,
+      nightDutyStartTime: formData.nightDutyStartTime || "",
+      nightDutyEndTime: formData.nightDutyEndTime || "",
+      morningShiftEnabled: false,
+      morningShiftStartTime: formData.morningShiftStartTime || "",
+      morningShiftEndTime: formData.morningShiftEndTime || "",
+      eightHourDutyStartTime: formData.eightHourDutyStartTime || "",
+      eightHourDutyEndTime: formData.eightHourDutyEndTime || "",
+      eightHourNightDutyStartTime: formData.eightHourNightDutyStartTime || "",
+      eightHourNightDutyEndTime: formData.eightHourNightDutyEndTime || "",
+      eightHourMorningShiftStartTime: formData.eightHourMorningShiftStartTime || "",
+      eightHourMorningShiftEndTime: formData.eightHourMorningShiftEndTime || "",
     },
     resolver: zodResolver(schema),
   });
+
+  useEffect(() => {
+    setNightDutyEnabled(false);
+    setMorningShiftEnabled(false);
+    setValue("nightDutyEnabled", false);
+    setValue("morningShiftEnabled", false);
+  }, [setValue]);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch("/api/settings");
+        const data = await response.json();
+        if (!data?.success || !data.data) return;
+        const settings = data.data;
+        setIsEightHourOverlayEnabled(Boolean(settings.eightHourOverlay?.enabled));
+        const normal = settings.placeholders?.normal;
+        const eightHourDefaults = settings.eightHourOverlay?.defaults;
+        if (!normal) return;
+        if (!formData.dutyStartTime) setValue("dutyStartTime", normal.regularIn);
+        if (!formData.dutyEndTime) setValue("dutyEndTime", normal.regularOut);
+        if (!formData.nightDutyStartTime) setValue("nightDutyStartTime", normal.nightIn);
+        if (!formData.nightDutyEndTime) setValue("nightDutyEndTime", normal.nightOut);
+        if (!formData.morningShiftStartTime) setValue("morningShiftStartTime", normal.morningIn);
+        if (!formData.morningShiftEndTime) setValue("morningShiftEndTime", normal.morningOut);
+        if (eightHourDefaults) {
+          if (!formData.eightHourDutyStartTime) setValue("eightHourDutyStartTime", eightHourDefaults.regularIn);
+          if (!formData.eightHourDutyEndTime) setValue("eightHourDutyEndTime", eightHourDefaults.regularOut);
+          if (!formData.eightHourNightDutyStartTime) setValue("eightHourNightDutyStartTime", eightHourDefaults.nightIn);
+          if (!formData.eightHourNightDutyEndTime) setValue("eightHourNightDutyEndTime", eightHourDefaults.nightOut);
+          if (!formData.eightHourMorningShiftStartTime) setValue("eightHourMorningShiftStartTime", eightHourDefaults.morningIn);
+          if (!formData.eightHourMorningShiftEndTime) setValue("eightHourMorningShiftEndTime", eightHourDefaults.morningOut);
+        }
+      } catch {
+        return;
+      }
+    };
+    fetchSettings();
+  }, [setValue, formData]);
 
   useEffect(() => {
     const fetchDepartments = async () => {
@@ -133,38 +197,91 @@ const Step2 = () => {
 
   const selectedDepartmentId = watch("departmentId");
 
-  // Apply department placeholders when the selected department (or department list) changes.
-  // Do not list formData.* in deps — setFormData updates them and would retrigger forever.
   useEffect(() => {
     if (!selectedDepartmentId || selectedDepartmentId === 0) return;
     const selected = departments.find((d) => d.id === selectedDepartmentId);
     if (!selected) return;
 
-    const updates: Partial<FormValues> = {};
-    if (selected.regularInPlaceholder) updates.dutyStartTime = selected.regularInPlaceholder;
-    if (selected.regularOutPlaceholder) updates.dutyEndTime = selected.regularOutPlaceholder;
-    if (selected.nightInPlaceholder) updates.nightDutyStartTime = selected.nightInPlaceholder;
-    if (selected.nightOutPlaceholder) updates.nightDutyEndTime = selected.nightOutPlaceholder;
-    if (selected.morningInPlaceholder) updates.morningShiftStartTime = selected.morningInPlaceholder;
-    if (selected.morningOutPlaceholder) updates.morningShiftEndTime = selected.morningOutPlaceholder;
-
     const current = getValues();
-    Object.entries(updates).forEach(([key, value]) => {
-      setValue(key as keyof FormValues, value as never, { shouldValidate: true });
-    });
-
     setFormData({
       departmentId: selectedDepartmentId,
-      dutyStartTime: updates.dutyStartTime ?? current.dutyStartTime,
-      dutyEndTime: updates.dutyEndTime ?? current.dutyEndTime,
-      nightDutyStartTime: updates.nightDutyStartTime ?? current.nightDutyStartTime ?? "",
-      nightDutyEndTime: updates.nightDutyEndTime ?? current.nightDutyEndTime ?? "",
-      morningShiftStartTime: updates.morningShiftStartTime ?? current.morningShiftStartTime ?? "",
-      morningShiftEndTime: updates.morningShiftEndTime ?? current.morningShiftEndTime ?? "",
+      dutyStartTime: current.dutyStartTime,
+      dutyEndTime: current.dutyEndTime,
+      nightDutyStartTime: current.nightDutyStartTime ?? "",
+      nightDutyEndTime: current.nightDutyEndTime ?? "",
+      morningShiftStartTime: current.morningShiftStartTime ?? "",
+      morningShiftEndTime: current.morningShiftEndTime ?? "",
+      eightHourDutyStartTime: current.eightHourDutyStartTime ?? "",
+      eightHourDutyEndTime: current.eightHourDutyEndTime ?? "",
+      eightHourNightDutyStartTime: current.eightHourNightDutyStartTime ?? "",
+      eightHourNightDutyEndTime: current.eightHourNightDutyEndTime ?? "",
+      eightHourMorningShiftStartTime: current.eightHourMorningShiftStartTime ?? "",
+      eightHourMorningShiftEndTime: current.eightHourMorningShiftEndTime ?? "",
     });
-  }, [selectedDepartmentId, departments, setValue, setFormData, getValues]);
+  }, [selectedDepartmentId, departments, setFormData, getValues]);
 
   const onSubmit = (data: FormValues) => {
+    if (isEightHourOverlayEnabled) {
+      if (!data.eightHourDutyStartTime || !baseTimeRegex.test(data.eightHourDutyStartTime)) {
+        setError("eightHourDutyStartTime", {
+          type: "custom",
+          message: "Required in HH:MM for 8 hour overlay",
+        });
+        return;
+      }
+      if (!data.eightHourDutyEndTime || !baseTimeRegex.test(data.eightHourDutyEndTime)) {
+        setError("eightHourDutyEndTime", {
+          type: "custom",
+          message: "Required in HH:MM for 8 hour overlay",
+        });
+        return;
+      }
+      if (nightDutyEnabled) {
+        if (
+          !data.eightHourNightDutyStartTime ||
+          !baseTimeRegex.test(data.eightHourNightDutyStartTime)
+        ) {
+          setError("eightHourNightDutyStartTime", {
+            type: "custom",
+            message: "Required in HH:MM when Night Duty is enabled",
+          });
+          return;
+        }
+        if (
+          !data.eightHourNightDutyEndTime ||
+          !baseTimeRegex.test(data.eightHourNightDutyEndTime)
+        ) {
+          setError("eightHourNightDutyEndTime", {
+            type: "custom",
+            message: "Required in HH:MM when Night Duty is enabled",
+          });
+          return;
+        }
+      }
+      if (morningShiftEnabled) {
+        if (
+          !data.eightHourMorningShiftStartTime ||
+          !baseTimeRegex.test(data.eightHourMorningShiftStartTime)
+        ) {
+          setError("eightHourMorningShiftStartTime", {
+            type: "custom",
+            message: "Required in HH:MM when Morning Shift is enabled",
+          });
+          return;
+        }
+        if (
+          !data.eightHourMorningShiftEndTime ||
+          !baseTimeRegex.test(data.eightHourMorningShiftEndTime)
+        ) {
+          setError("eightHourMorningShiftEndTime", {
+            type: "custom",
+            message: "Required in HH:MM when Morning Shift is enabled",
+          });
+          return;
+        }
+      }
+    }
+    const hasAnyShiftEnabled = nightDutyEnabled || morningShiftEnabled;
     setFormData({
       // Preserve existing employee data from extension
       departmentId: data.departmentId,
@@ -174,8 +291,26 @@ const Step2 = () => {
       nightDutyEndTime: nightDutyEnabled ? data.nightDutyEndTime : "",
       morningShiftStartTime: morningShiftEnabled ? data.morningShiftStartTime : "",
       morningShiftEndTime: morningShiftEnabled ? data.morningShiftEndTime : "",
+      eightHourDutyStartTime: isEightHourOverlayEnabled ? data.eightHourDutyStartTime : "",
+      eightHourDutyEndTime: isEightHourOverlayEnabled ? data.eightHourDutyEndTime : "",
+      eightHourNightDutyStartTime:
+        isEightHourOverlayEnabled && nightDutyEnabled
+          ? data.eightHourNightDutyStartTime
+          : "",
+      eightHourNightDutyEndTime:
+        isEightHourOverlayEnabled && nightDutyEnabled
+          ? data.eightHourNightDutyEndTime
+          : "",
+      eightHourMorningShiftStartTime:
+        isEightHourOverlayEnabled && morningShiftEnabled
+          ? data.eightHourMorningShiftStartTime
+          : "",
+      eightHourMorningShiftEndTime:
+        isEightHourOverlayEnabled && morningShiftEnabled
+          ? data.eightHourMorningShiftEndTime
+          : "",
     });
-    setStep(3);
+    setStep(hasAnyShiftEnabled ? 3 : 4);
   };
 
   return (
@@ -288,6 +423,47 @@ const Step2 = () => {
             )}
           </div>
         </div>
+        {isEightHourOverlayEnabled && (
+          <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-6">
+            <h4 className="text-base font-medium text-gray-900 dark:text-white mb-4">
+              8 Hour Shift Time
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Regular Start Time
+                </label>
+                <input
+                  type="text"
+                  {...register("eightHourDutyStartTime")}
+                  className="input-field"
+                  placeholder="HH:MM"
+                />
+                {errors.eightHourDutyStartTime && (
+                  <p className="mt-1 text-sm text-[#D4483B]">
+                    {String(errors.eightHourDutyStartTime.message)}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Regular End Time
+                </label>
+                <input
+                  type="text"
+                  {...register("eightHourDutyEndTime")}
+                  className="input-field"
+                  placeholder="HH:MM"
+                />
+                {errors.eightHourDutyEndTime && (
+                  <p className="mt-1 text-sm text-[#D4483B]">
+                    {String(errors.eightHourDutyEndTime.message)}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="space-y-4">
@@ -352,6 +528,42 @@ const Step2 = () => {
               )}
             </div>
           </div>
+          {isEightHourOverlayEnabled && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  8 Hour Night Start Time
+                </label>
+                <input
+                  type="text"
+                  {...register("eightHourNightDutyStartTime")}
+                  className="input-field"
+                  placeholder="HH:MM"
+                />
+                {errors.eightHourNightDutyStartTime && (
+                  <p className="mt-1 text-sm text-[#D4483B]">
+                    {String(errors.eightHourNightDutyStartTime.message)}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  8 Hour Night End Time
+                </label>
+                <input
+                  type="text"
+                  {...register("eightHourNightDutyEndTime")}
+                  className="input-field"
+                  placeholder="HH:MM"
+                />
+                {errors.eightHourNightDutyEndTime && (
+                  <p className="mt-1 text-sm text-[#D4483B]">
+                    {String(errors.eightHourNightDutyEndTime.message)}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -395,6 +607,42 @@ const Step2 = () => {
               )}
             </div>
           </div>
+          {isEightHourOverlayEnabled && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  8 Hour Morning Start Time
+                </label>
+                <input
+                  type="text"
+                  {...register("eightHourMorningShiftStartTime")}
+                  className="input-field"
+                  placeholder="HH:MM"
+                />
+                {errors.eightHourMorningShiftStartTime && (
+                  <p className="mt-1 text-sm text-[#D4483B]">
+                    {String(errors.eightHourMorningShiftStartTime.message)}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  8 Hour Morning End Time
+                </label>
+                <input
+                  type="text"
+                  {...register("eightHourMorningShiftEndTime")}
+                  className="input-field"
+                  placeholder="HH:MM"
+                />
+                {errors.eightHourMorningShiftEndTime && (
+                  <p className="mt-1 text-sm text-[#D4483B]">
+                    {String(errors.eightHourMorningShiftEndTime.message)}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

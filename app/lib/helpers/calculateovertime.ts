@@ -57,49 +57,17 @@ function calculateHoursBefore(time: string, hours: number): string {
   return adjustTimeByHours(time, -Math.abs(hours));
 }
 
-/** From `doubleOffdayStartDay` onward: earlier nominal in-time (and later morning out-time). Skipped on holidays/off days. */
-function applyLateMonthNominalDutyShift(
-  dutyStartTime: string,
-  dutyEndTime: string,
-  opts: {
-    dayNumber: number;
-    doubleOffdayStartDay: number;
-    isHoliday: boolean;
-    isNightDuty: boolean;
-    isMorningShift: boolean;
-  }
-): { start: string; end: string } {
-  const {
-    dayNumber,
-    doubleOffdayStartDay,
-    isHoliday,
-    isNightDuty,
-    isMorningShift,
-  } = opts;
-  if (dayNumber < doubleOffdayStartDay) {
-    return { start: dutyStartTime, end: dutyEndTime };
-  }
-  // Morning shift still follows late-month nominal extension even on off/holiday days.
-  // This avoids calculating after-duty OT from the old out-time (e.g. 12:30 instead of 13:00).
-  if (isMorningShift) {
-    return {
-      start: adjustTimeByHours(dutyStartTime, -0.5),
-      end: adjustTimeByHours(dutyEndTime, 0.5),
-    };
-  }
-  if (isHoliday) {
-    return { start: dutyStartTime, end: dutyEndTime };
-  }
-  if (isNightDuty) {
-    return {
-      start: adjustTimeByHours(dutyStartTime, -1),
-      end: dutyEndTime,
-    };
-  }
-  return {
-    start: adjustTimeByHours(dutyStartTime, -1),
-    end: dutyEndTime,
-  };
+function isDayInRange(day: number, startDay: number, endDay: number): boolean {
+  return day >= startDay && day <= endDay;
+}
+
+function isOverlayActiveForDay(
+  enabled: boolean,
+  day: number,
+  startDay: number,
+  endDay: number
+): boolean {
+  return enabled && isDayInRange(day, startDay, endDay);
 }
 
 function isValidRecordedTime(value?: string | null): boolean {
@@ -285,16 +253,32 @@ const CalculateOvertime = async (
   morningShiftDays: number[] = [],
   morningShiftStart: string = "",
   morningShiftEnd: string = "",
-  departmentId?: number
+  departmentId?: number,
+  eightHourTimes?: {
+    regularStart?: string;
+    regularEnd?: string;
+    nightStart?: string;
+    nightEnd?: string;
+    morningStart?: string;
+    morningEnd?: string;
+  }
 ) => {
   const currentMonthDetails = await getCurrentMonthDetails();
 
   const appSettings = await getAppSettings();
-  const isWinterEnabled = appSettings.isWinter;
-  const winterStartDay = appSettings.winterStartDay;
-  const winterEndDay = appSettings.winterEndDay;
-  const doubleOffdayStartDay = appSettings.doubleOffdayStartDay;
-  const dayBeforeOffReductionHours = appSettings.dayBeforeOffReductionHours;
+  const isWinterEnabled = appSettings.winterOverlay.enabled;
+  const winterStartDay = appSettings.winterOverlay.range.startDay;
+  const winterEndDay = appSettings.winterOverlay.range.endDay;
+  const enableDoubleOffDays = appSettings.doubleOffOverlay.enabled;
+  const enableEightHourLogic = appSettings.eightHourOverlay.enabled;
+  const doubleOffdayStartDay = appSettings.doubleOffOverlay.range.startDay;
+  const doubleOffdayEndDay = appSettings.doubleOffOverlay.range.endDay;
+  const noFridayStartDay = appSettings.noFridayOverlay.range.startDay;
+  const noFridayEndDay = appSettings.noFridayOverlay.range.endDay;
+  const noFridayEnabled = appSettings.noFridayOverlay.enabled;
+  const eightHourStartDay = appSettings.eightHourOverlay.range.startDay;
+  const eightHourEndDay = appSettings.eightHourOverlay.range.endDay;
+  const dayBeforeOffReductionHours = appSettings.normal.dayBeforeOffReductionHours;
   
   // Fetch department-specific winter placeholders if departmentId is provided
   let departmentInfo: {
@@ -335,42 +319,12 @@ const CalculateOvertime = async (
         (typeof monthValue === "string" ? monthValue : undefined)
     );
 
-  const winterRegularInAdjustment = resolveAdjustment(
-    departmentInfo?.winterRegularInPlaceholder,
-    "winterRegularInPlaceholder" in currentMonthDetails
-      ? currentMonthDetails.winterRegularInPlaceholder
-      : undefined
-  );
-  const winterRegularOutAdjustment = resolveAdjustment(
-    departmentInfo?.winterRegularOutPlaceholder,
-    "winterRegularOutPlaceholder" in currentMonthDetails
-      ? currentMonthDetails.winterRegularOutPlaceholder
-      : undefined
-  );
-  const winterMorningInAdjustment = resolveAdjustment(
-    departmentInfo?.winterMorningInPlaceholder,
-    "winterMorningInPlaceholder" in currentMonthDetails
-      ? currentMonthDetails.winterMorningInPlaceholder
-      : undefined
-  );
-  const winterMorningOutAdjustment = resolveAdjustment(
-    departmentInfo?.winterMorningOutPlaceholder,
-    "winterMorningOutPlaceholder" in currentMonthDetails
-      ? currentMonthDetails.winterMorningOutPlaceholder
-      : undefined
-  );
-  const winterNightInAdjustment = resolveAdjustment(
-    departmentInfo?.winterNightInPlaceholder,
-    "winterNightInPlaceholder" in currentMonthDetails
-      ? currentMonthDetails.winterNightInPlaceholder
-      : undefined
-  );
-  const winterNightOutAdjustment = resolveAdjustment(
-    departmentInfo?.winterNightOutPlaceholder,
-    "winterNightOutPlaceholder" in currentMonthDetails
-      ? currentMonthDetails.winterNightOutPlaceholder
-      : undefined
-  );
+  const winterRegularInAdjustment = resolveAdjustment(departmentInfo?.winterRegularInPlaceholder, appSettings.placeholders.winter.regularIn);
+  const winterRegularOutAdjustment = resolveAdjustment(departmentInfo?.winterRegularOutPlaceholder, appSettings.placeholders.winter.regularOut);
+  const winterMorningInAdjustment = resolveAdjustment(departmentInfo?.winterMorningInPlaceholder, appSettings.placeholders.winter.morningIn);
+  const winterMorningOutAdjustment = resolveAdjustment(departmentInfo?.winterMorningOutPlaceholder, appSettings.placeholders.winter.morningOut);
+  const winterNightInAdjustment = resolveAdjustment(departmentInfo?.winterNightInPlaceholder, appSettings.placeholders.winter.nightIn);
+  const winterNightOutAdjustment = resolveAdjustment(departmentInfo?.winterNightOutPlaceholder, appSettings.placeholders.winter.nightOut);
 
   if (
     "startDay" in currentMonthDetails &&
@@ -417,9 +371,12 @@ const CalculateOvertime = async (
 
       // Business rule: from day 23 onward, treat two consecutive weekly off-days
       // (selected off-day + the next day).
+      const isWithinDoubleOffRange =
+        isDayInRange(dayNumber, doubleOffdayStartDay, doubleOffdayEndDay);
       const isOffDay =
         normalizedCurrentDay === normalizedPrimaryOffDay ||
-        (dayNumber >= doubleOffdayStartDay &&
+        (isWithinDoubleOffRange &&
+          enableDoubleOffDays &&
           normalizedSecondOffDay !== "" &&
           normalizedCurrentDay === normalizedSecondOffDay);
       const isCHD = holidays.includes(dayNumber);
@@ -441,10 +398,12 @@ const CalculateOvertime = async (
 
       // Check if winter applies for this day
       const isWinterDay = Boolean(
-        isWinterEnabled && 
-        winterStartDay && 
-        dayNumber >= winterStartDay &&
-        (!winterEndDay || dayNumber <= winterEndDay)
+        isOverlayActiveForDay(
+          isWinterEnabled,
+          dayNumber,
+          winterStartDay,
+          winterEndDay
+        )
       );
 
       // Check if next day is off day
@@ -452,7 +411,8 @@ const CalculateOvertime = async (
       const nextDayName = dayNames[nextDayIndex];
       const isNextDayPrimaryOff = nextDayName.toLowerCase() === normalizedPrimaryOffDay;
       const isNextDaySecondaryOff =
-        dayNumber + 1 >= doubleOffdayStartDay &&
+        isDayInRange(dayNumber + 1, doubleOffdayStartDay, doubleOffdayEndDay) &&
+        enableDoubleOffDays &&
         normalizedSecondOffDay !== "" &&
         nextDayName.toLowerCase() === normalizedSecondOffDay;
       const isDayBeforeOff = isNextDayPrimaryOff || isNextDaySecondaryOff;
@@ -461,7 +421,13 @@ const CalculateOvertime = async (
       // on the calendar day before off, all non-holiday shifts use shortened out-time.
       // From the threshold onward, no shift uses this shortening (`isDayBeforeOffWindow` is false).
       const isDayBeforeOffWindow =
-        dayNumber < doubleOffdayStartDay && isDayBeforeOff;
+        isDayBeforeOff &&
+        !isOverlayActiveForDay(
+          noFridayEnabled,
+          dayNumber,
+          noFridayStartDay,
+          noFridayEndDay
+        );
 
       const dayBeforeOffAffectsWinterOut =
         isDayBeforeOffWindow && !isHoliday;
@@ -530,19 +496,25 @@ const CalculateOvertime = async (
         }
       }
 
-      const lateMonthDuty = applyLateMonthNominalDutyShift(
-        dutyStartTime,
-        dutyEndTime,
-        {
+      const shouldApplyEightHourLogic =
+        isOverlayActiveForDay(
+          enableEightHourLogic,
           dayNumber,
-          doubleOffdayStartDay,
-          isHoliday,
-          isNightDuty,
-          isMorningShift,
+          eightHourStartDay,
+          eightHourEndDay
+        );
+      if (shouldApplyEightHourLogic) {
+        if (isNightDuty) {
+          dutyStartTime = eightHourTimes?.nightStart || dutyStartTime;
+          dutyEndTime = eightHourTimes?.nightEnd || dutyEndTime;
+        } else if (isMorningShift) {
+          dutyStartTime = eightHourTimes?.morningStart || dutyStartTime;
+          dutyEndTime = eightHourTimes?.morningEnd || dutyEndTime;
+        } else {
+          dutyStartTime = eightHourTimes?.regularStart || dutyStartTime;
+          dutyEndTime = eightHourTimes?.regularEnd || dutyEndTime;
         }
-      );
-      dutyStartTime = lateMonthDuty.start;
-      dutyEndTime = lateMonthDuty.end;
+      }
 
       if (
         !record ||
