@@ -25,6 +25,12 @@ export interface FormData {
   nightDutyEndTime: string;
   morningShiftStartTime: string;
   morningShiftEndTime: string;
+  eightHourDutyStartTime: string;
+  eightHourDutyEndTime: string;
+  eightHourNightDutyStartTime: string;
+  eightHourNightDutyEndTime: string;
+  eightHourMorningShiftStartTime: string;
+  eightHourMorningShiftEndTime: string;
   inOutTimes: AttendanceRecord[];
   nightDutyDays: number[];
   morningShiftDays: number[];

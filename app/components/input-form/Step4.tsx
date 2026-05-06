@@ -2,13 +2,12 @@
 
 import { useFormContext } from "@/app/context/FormContext";
 import { sendFormData } from "@/app/utils/api";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import dayjs from "dayjs";
 import {
   applyWinterAdjustments,
-  adjustTimeByHours,
   parseWinterAdjustment,
 } from "@/app/lib/helpers/winterTimeAdjustments";
 
@@ -19,6 +18,46 @@ const formatTotalHours = (hours: number): string => {
   const formattedMinutes = totalMinutes % 60;
   return `${formattedHours.toString().padStart(2, "0")}:${formattedMinutes.toString().padStart(2, "0")}`;
 };
+
+const setCellTextPreservingStyle = (cell: ExcelJS.Cell, newValue: string) => {
+  const originalFont = cell.font ? { ...cell.font } : undefined;
+  const originalAlignment = cell.alignment ? { ...cell.alignment } : undefined;
+  const originalBorder = cell.border ? { ...cell.border } : undefined;
+  const originalFill = cell.fill ? { ...cell.fill } : undefined;
+  const originalProtection = cell.protection ? { ...cell.protection } : undefined;
+  const originalNumFmt = cell.numFmt;
+  cell.value = newValue;
+  if (originalFont) cell.font = originalFont;
+  if (originalAlignment) cell.alignment = originalAlignment;
+  if (originalBorder) cell.border = originalBorder;
+  if (originalFill) cell.fill = originalFill;
+  if (originalProtection) cell.protection = originalProtection;
+  if (originalNumFmt) cell.numFmt = originalNumFmt;
+};
+
+const updateLabeledCell = (cell: ExcelJS.Cell, fallbackLabel: string, value: string) => {
+  const originalValue = cell.value;
+  let label = fallbackLabel;
+  if (typeof originalValue === "string") {
+    const colonIndex = originalValue.indexOf(":");
+    if (colonIndex !== -1) {
+      label = originalValue.slice(0, colonIndex + 1);
+    } else {
+      label = originalValue;
+    }
+  }
+  setCellTextPreservingStyle(cell, `${label} ${value}`.trim());
+};
+
+const isDayInRange = (day: number, startDay: number, endDay: number) =>
+  day >= startDay && day <= endDay;
+
+const isOverlayActiveForDay = (
+  enabled: boolean,
+  day: number,
+  startDay: number,
+  endDay: number
+) => enabled && isDayInRange(day, startDay, endDay);
 
 const Step4 = () => {
   const { formData, setFormData } = useFormContext();
@@ -32,6 +71,14 @@ const Step4 = () => {
   );
   const [responseMessage, setResponseMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState<boolean>(false);
+  const hasAutoSubmitted = useRef(false);
+  const exportOvertimeToExcelRef = useRef<(overtimeData: any[]) => Promise<void>>(
+    async () => undefined
+  );
+  const isNightDutyEnabledByUser =
+    Boolean(formData.nightDutyStartTime) && Boolean(formData.nightDutyEndTime);
+  const isMorningShiftEnabledByUser =
+    Boolean(formData.morningShiftStartTime) && Boolean(formData.morningShiftEndTime);
 
   const isValidTimeValue = (value?: string | null) => {
     if (!value) return false;
@@ -90,36 +137,6 @@ const Step4 = () => {
   };
 
   const populateDefaultWorksheet = (sheet: ExcelJS.Worksheet, overtimeData: any[], monthDetails?: any) => {
-    const setCellTextPreservingStyle = (cell: ExcelJS.Cell, newValue: string) => {
-      const originalFont = cell.font ? { ...cell.font } : undefined;
-      const originalAlignment = cell.alignment ? { ...cell.alignment } : undefined;
-      const originalBorder = cell.border ? { ...cell.border } : undefined;
-      const originalFill = cell.fill ? { ...cell.fill } : undefined;
-      const originalProtection = cell.protection ? { ...cell.protection } : undefined;
-      const originalNumFmt = cell.numFmt;
-      cell.value = newValue;
-      if (originalFont) cell.font = originalFont;
-      if (originalAlignment) cell.alignment = originalAlignment;
-      if (originalBorder) cell.border = originalBorder;
-      if (originalFill) cell.fill = originalFill;
-      if (originalProtection) cell.protection = originalProtection;
-      if (originalNumFmt) cell.numFmt = originalNumFmt;
-    };
-
-    const updateLabeledCell = (cell: ExcelJS.Cell, fallbackLabel: string, value: string) => {
-      const originalValue = cell.value;
-      let label = fallbackLabel;
-      if (typeof originalValue === "string") {
-        const colonIndex = originalValue.indexOf(":");
-        if (colonIndex !== -1) {
-          label = originalValue.slice(0, colonIndex + 1);
-        } else {
-          label = originalValue;
-        }
-      }
-      setCellTextPreservingStyle(cell, `${label} ${value}`.trim());
-    };
-
     // Check if it's Dashain or Tihar month
     const isDashainMonth = Boolean(monthDetails?.isDashainMonth);
     const isTiharMonth = Boolean(monthDetails?.isTiharMonth);
@@ -347,9 +364,13 @@ const Step4 = () => {
     const monthName = monthDetails?.name ?? "";
     const startDay = Number(monthDetails?.startDay ?? 0);
     const holidays = Array.isArray(monthDetails?.holidays) ? monthDetails.holidays : [];
-    const isWinterEnabled = Boolean(monthDetails?.isWinter ?? false);
-    const winterStartDay = Number(monthDetails?.winterStartDay ?? null);
-    const winterEndDay = Number(monthDetails?.winterEndDay ?? null);
+    const settings = monthDetails?.settings;
+    const winterOverlay = settings?.winterOverlay;
+    const doubleOffOverlay = settings?.doubleOffOverlay;
+    const eightHourOverlay = settings?.eightHourOverlay;
+    const noFridayOverlay = settings?.noFridayOverlay;
+    const cutoffThresholds = settings?.cutoffThresholds;
+    const isWinterEnabled = Boolean(winterOverlay?.enabled ?? false);
 
     const resolveAdjustment = (
       departmentValue?: string | null,
@@ -387,36 +408,6 @@ const Step4 = () => {
     );
 
     const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
-    const setCellTextPreservingStyle = (cell: ExcelJS.Cell, newValue: string) => {
-      const originalFont = cell.font ? { ...cell.font } : undefined;
-      const originalAlignment = cell.alignment ? { ...cell.alignment } : undefined;
-      const originalBorder = cell.border ? { ...cell.border } : undefined;
-      const originalFill = cell.fill ? { ...cell.fill } : undefined;
-      const originalProtection = cell.protection ? { ...cell.protection } : undefined;
-      const originalNumFmt = cell.numFmt;
-      cell.value = newValue;
-      if (originalFont) cell.font = originalFont;
-      if (originalAlignment) cell.alignment = originalAlignment;
-      if (originalBorder) cell.border = originalBorder;
-      if (originalFill) cell.fill = originalFill;
-      if (originalProtection) cell.protection = originalProtection;
-      if (originalNumFmt) cell.numFmt = originalNumFmt;
-    };
-
-    const updateLabeledCell = (cell: ExcelJS.Cell, fallbackLabel: string, value: string) => {
-      const originalValue = cell.value;
-      let label = fallbackLabel;
-      if (typeof originalValue === "string") {
-        const colonIndex = originalValue.indexOf(":");
-        if (colonIndex !== -1) {
-          label = originalValue.slice(0, colonIndex + 1);
-        } else {
-          label = originalValue;
-        }
-      }
-      setCellTextPreservingStyle(cell, `${label} ${value}`.trim());
-    };
 
     updateLabeledCell(sheet.getCell("A5"), "Name:", formData.name ?? "");
     updateLabeledCell(sheet.getCell("A6"), "Designation:", formData.designation ?? "");
@@ -591,37 +582,39 @@ const Step4 = () => {
 
       // Calculate regular duty start and end times (D and E columns)
       // Check if it's day before off day (supports configured double off-day period)
-      const doubleOffdayStartDay = Number(monthDetails?.doubleOffdayStartDay ?? 23);
       const secondOffDayName = getNextDayName(formData.regularOffDay ?? "");
-      const currentDayIndex = (startDay + index) % 7;
-      const currentDayName = daysOfWeek[currentDayIndex];
       const nextDayIndex = (startDay + index + 1) % 7;
       const nextDayName = daysOfWeek[nextDayIndex];
-      const normalizedPrimaryOff = (formData.regularOffDay ?? "").toLowerCase();
-      const normalizedSecondOff = secondOffDayName.toLowerCase();
-      const isCalendarOffDay =
-        currentDayName.toLowerCase() === normalizedPrimaryOff ||
-        (dayNumber >= doubleOffdayStartDay &&
-          Boolean(secondOffDayName) &&
-          currentDayName.toLowerCase() === normalizedSecondOff);
       const nextIsPrimaryOff = nextDayName.toLowerCase() === (formData.regularOffDay ?? "").toLowerCase();
       const nextIsSecondaryOff =
-        dayNumber + 1 >= doubleOffdayStartDay &&
+        isDayInRange(
+          dayNumber + 1,
+          Number(doubleOffOverlay?.range?.startDay ?? 1),
+          Number(doubleOffOverlay?.range?.endDay ?? 31)
+        ) &&
         secondOffDayName &&
         nextDayName.toLowerCase() === secondOffDayName.toLowerCase();
       const isDayBeforeOff = nextIsPrimaryOff || nextIsSecondaryOff;
       const isDayBeforeOffWindow =
-        dayNumber < doubleOffdayStartDay && isDayBeforeOff;
+        isDayBeforeOff &&
+        !isOverlayActiveForDay(
+          Boolean(noFridayOverlay?.enabled),
+          dayNumber,
+          Number(noFridayOverlay?.range?.startDay ?? 1),
+          Number(noFridayOverlay?.range?.endDay ?? 31)
+        );
       const isHoliday = holidays.includes(dayNumber);
       const isOffDayEntry = entry?.typeOfHoliday?.includes("OFF") || entry?.typeOfHoliday === "CHD" || entry?.isHolidayOvertime;
-      const reductionHours = Number(monthDetails?.dayBeforeOffReductionHours ?? 2);
+      const reductionHours = Number(settings?.normal?.dayBeforeOffReductionHours ?? 2);
 
       // Check if winter applies for this day
       const isWinterDay = Boolean(
-        isWinterEnabled && 
-        winterStartDay && 
-        dayNumber >= winterStartDay &&
-        (!winterEndDay || dayNumber <= winterEndDay)
+        isOverlayActiveForDay(
+          isWinterEnabled,
+          dayNumber,
+          Number(winterOverlay?.range?.startDay ?? 1),
+          Number(winterOverlay?.range?.endDay ?? 31)
+        )
       );
 
       // Determine shift type for the day
@@ -687,19 +680,23 @@ const Step4 = () => {
         }
       }
 
-      const skipLateMonthNominalShift =
-        isCalendarOffDay ||
-        isHoliday ||
-        isDashainDay ||
-        isTiharDay;
-      if (!skipLateMonthNominalShift && dayNumber >= doubleOffdayStartDay) {
+      const shouldApplyEightHourLogic =
+        isOverlayActiveForDay(
+          Boolean(eightHourOverlay?.enabled),
+          dayNumber,
+          Number(eightHourOverlay?.range?.startDay ?? 1),
+          Number(eightHourOverlay?.range?.endDay ?? 31)
+        );
+      if (shouldApplyEightHourLogic) {
         if (isNightDutyDay) {
-          dutyStartTime = adjustTimeByHours(dutyStartTime, -1);
+          dutyStartTime = formData.eightHourNightDutyStartTime || dutyStartTime;
+          dutyEndTime = formData.eightHourNightDutyEndTime || dutyEndTime;
         } else if (isMorningShiftDay) {
-          dutyStartTime = adjustTimeByHours(dutyStartTime, -0.5);
-          dutyEndTime = adjustTimeByHours(dutyEndTime, 0.5);
+          dutyStartTime = formData.eightHourMorningShiftStartTime || dutyStartTime;
+          dutyEndTime = formData.eightHourMorningShiftEndTime || dutyEndTime;
         } else {
-          dutyStartTime = adjustTimeByHours(dutyStartTime, -1);
+          dutyStartTime = formData.eightHourDutyStartTime || dutyStartTime;
+          dutyEndTime = formData.eightHourDutyEndTime || dutyEndTime;
         }
       }
 
@@ -752,7 +749,7 @@ const Step4 = () => {
         const dutyTimeInMinutes = dutyHours * 60 + dutyMinutes;
         const outTimeInMinutes = outHours * 60 + outMinutes;
 
-        const gracePeriodMinutes = Number(monthDetails?.overtimeGraceMinutes ?? 40);
+        const gracePeriodMinutes = Number(cutoffThresholds?.afterDutyGraceMinutes ?? 40);
         const gracePeriodEnd = dutyTimeInMinutes + gracePeriodMinutes;
 
         // Only fill if out time is beyond grace period (more than 40 minutes after effective duty end)
@@ -826,7 +823,7 @@ const Step4 = () => {
 
   };
 
-  const handleSubmit = async (e: React.MouseEvent) => {
+  const handleSubmit = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -883,7 +880,7 @@ const Step4 = () => {
         setIsError(false);
         setResponseMessage("Overtime data processed successfully!");
         if (response?.overtimeData) {
-          await exportOvertimeToExcel(response.overtimeData);
+          await exportOvertimeToExcelRef.current(response.overtimeData);
         }
       }
     } catch (err) {
@@ -893,9 +890,9 @@ const Step4 = () => {
     }
 
     setIsLoading(false);
-  };
+  }, [isLoading, formData, selectedDays, selectedMorningDays, setFormData]);
 
-  const exportOvertimeToExcel = async (overtimeData: any[]) => {
+  async function exportOvertimeToExcel(overtimeData: any[]) {
     let templateFileName = "template_grsd.xlsx";
     let selectedDept: any = null;
 
@@ -956,7 +953,54 @@ const Step4 = () => {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
     saveAs(blob, "overtime.xlsx");
-  };
+  }
+
+  useEffect(() => {
+    exportOvertimeToExcelRef.current = exportOvertimeToExcel;
+  });
+
+  useEffect(() => {
+    if (isInitialLoading || isLoading) return;
+    if (isNightDutyEnabledByUser || isMorningShiftEnabledByUser) return;
+    if (hasAutoSubmitted.current) return;
+    hasAutoSubmitted.current = true;
+    const event = { preventDefault: () => undefined, stopPropagation: () => undefined } as React.MouseEvent;
+    handleSubmit(event);
+  }, [isInitialLoading, isLoading, isNightDutyEnabledByUser, isMorningShiftEnabledByUser, handleSubmit]);
+
+  const renderDaySelector = (
+    title: string,
+    selected: number[],
+    onClick: (day: number) => void,
+    selectedClass: string
+  ) => (
+    <div>
+      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+        {title}
+      </h3>
+      <div className="grid grid-cols-7 gap-3 p-6 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+        {[...Array(32)].map((_, index) => {
+          const day = index + 1;
+          const isSelected = selected.includes(day);
+          return (
+            <button
+              key={day}
+              type="button"
+              disabled={isLoading}
+              className={`w-12 h-12 flex items-center justify-center rounded-lg transition-all duration-200 ${
+                isSelected
+                  ? selectedClass
+                  : "bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600"
+              }`}
+              onClick={() => onClick(day)}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 
   if (isInitialLoading) {
     return (
@@ -977,62 +1021,28 @@ const Step4 = () => {
             Select Duty Days
           </h2>
           <p className="text-gray-600 dark:text-gray-300">
-            Choose the days for night duty and morning shift.
+            Choose applicable days for enabled shifts.
           </p>
         </div>
 
         <div className="space-y-8">
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Night Duty Days
-            </h3>
-            <div className="grid grid-cols-7 gap-3 p-6 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
-              {[...Array(32)].map((_, index) => {
-                const day = index + 1;
-                const isSelected = selectedDays.includes(day);
-                return (
-                  <button
-                    key={day}
-                    type="button"
-                    disabled={isLoading}
-                    className={`w-12 h-12 flex items-center justify-center rounded-lg transition-all duration-200 ${isSelected
-                      ? "bg-[#003594] text-white shadow-md"
-                      : "bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600"
-                      }`}
-                    onClick={() => handleDayClick(day)}
-                  >
-                    {day}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {isNightDutyEnabledByUser && (
+            renderDaySelector(
+              "Night Duty Days",
+              selectedDays,
+              handleDayClick,
+              "bg-[#003594] text-white shadow-md"
+            )
+          )}
 
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Morning Shift Days
-            </h3>
-            <div className="grid grid-cols-7 gap-3 p-6 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
-              {[...Array(32)].map((_, index) => {
-                const day = index + 1;
-                const isSelected = selectedMorningDays.includes(day);
-                return (
-                  <button
-                    key={day}
-                    type="button"
-                    disabled={isLoading}
-                    className={`w-12 h-12 flex items-center justify-center rounded-lg transition-all duration-200 ${isSelected
-                      ? "bg-[#D4483B] text-white shadow-md"
-                      : "bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600"
-                      }`}
-                    onClick={() => handleMorningDayClick(day)}
-                  >
-                    {day}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {isMorningShiftEnabledByUser && (
+            renderDaySelector(
+              "Morning Shift Days",
+              selectedMorningDays,
+              handleMorningDayClick,
+              "bg-[#D4483B] text-white shadow-md"
+            )
+          )}
         </div>
 
         {responseMessage && (

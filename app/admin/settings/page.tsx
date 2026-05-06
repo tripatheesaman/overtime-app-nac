@@ -5,46 +5,67 @@ import { AdminCard } from "@/app/admin/components/AdminCard";
 import { AdminField } from "@/app/admin/components/AdminField";
 import { AdminSection } from "@/app/admin/components/AdminSection";
 import { AdminButton } from "@/app/admin/components/AdminButton";
-
-type SettingsData = {
-  isWinter: boolean;
-  winterStartDay: number | null;
-  winterEndDay: number | null;
-  inTimeThreshold: number;
-  outTimeThreshold: number;
-  oddShiftMinHours: number;
-  doubleOffdayStartDay: number;
-  dayBeforeOffReductionHours: number;
-  overtimeGraceMinutes: number;
-  specialWindowStart: string;
-  specialWindowEnd: string;
-  specialWindowLowerCutoff: string;
-  specialWindowUpperCutoff: string;
-};
-
-const defaultSettings: SettingsData = {
-  isWinter: false,
-  winterStartDay: null,
-  winterEndDay: null,
-  inTimeThreshold: 30,
-  outTimeThreshold: 30,
-  oddShiftMinHours: 0,
-  doubleOffdayStartDay: 23,
-  dayBeforeOffReductionHours: 2,
-  overtimeGraceMinutes: 40,
-  specialWindowStart: "04:50",
-  specialWindowEnd: "06:00",
-  specialWindowLowerCutoff: "05:15",
-  specialWindowUpperCutoff: "05:35",
-};
+import { AppSettings, DEFAULT_APP_SETTINGS } from "@/app/types/settings";
 
 export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
-  const [settings, setSettings] = useState<SettingsData>(defaultSettings);
-  const [doubleOffdayStartDayInput, setDoubleOffdayStartDayInput] = useState(
-    String(defaultSettings.doubleOffdayStartDay)
-  );
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
+
+  const setRange = (
+    key: "winterOverlay" | "doubleOffOverlay" | "noFridayOverlay" | "eightHourOverlay",
+    field: "startDay" | "endDay",
+    value: number
+  ) => {
+    setSettings((prev) => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        range: {
+          ...prev[key].range,
+          [field]: value,
+        },
+      },
+    }));
+  };
+
+  const setShiftPlaceholder = (
+    parent: "placeholders" | "eightHourOverlay",
+    child: "normal" | "winter" | "defaults",
+    field:
+      | "regularIn"
+      | "regularOut"
+      | "nightIn"
+      | "nightOut"
+      | "morningIn"
+      | "morningOut",
+    value: string
+  ) => {
+    setSettings((prev) => {
+      if (parent === "placeholders") {
+        return {
+          ...prev,
+          placeholders: {
+            ...prev.placeholders,
+            [child]: {
+              ...prev.placeholders[child as "normal" | "winter"],
+              [field]: value,
+            },
+          },
+        };
+      }
+      return {
+        ...prev,
+        eightHourOverlay: {
+          ...prev.eightHourOverlay,
+          defaults: {
+            ...prev.eightHourOverlay.defaults,
+            [field]: value,
+          },
+        },
+      };
+    });
+  };
 
   const fetchSettings = async () => {
     setLoading(true);
@@ -52,9 +73,7 @@ export default function AdminSettingsPage() {
       const res = await fetch("/api/settings");
       const data = await res.json();
       if (data?.success && data.data) {
-        const merged = { ...defaultSettings, ...data.data };
-        setSettings(merged);
-        setDoubleOffdayStartDayInput(String(merged.doubleOffdayStartDay));
+        setSettings(data.data);
       }
     } finally {
       setLoading(false);
@@ -68,28 +87,13 @@ export default function AdminSettingsPage() {
   const save = async () => {
     setLoading(true);
     try {
-      const parsedDoubleOffdayStartDay = Number.parseInt(
-        doubleOffdayStartDayInput,
-        10
-      );
-      const normalizedDoubleOffdayStartDay = Number.isFinite(
-        parsedDoubleOffdayStartDay
-      )
-        ? Math.min(31, Math.max(1, parsedDoubleOffdayStartDay))
-        : defaultSettings.doubleOffdayStartDay;
-      const payload = {
-        ...settings,
-        doubleOffdayStartDay: normalizedDoubleOffdayStartDay,
-      };
       const res = await fetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(settings),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || "Failed");
-      setSettings(payload);
-      setDoubleOffdayStartDayInput(String(normalizedDoubleOffdayStartDay));
       alert("All settings saved successfully.");
     } catch (e) {
       console.error(e);
@@ -133,211 +137,175 @@ export default function AdminSettingsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-          System settings
+          Mode settings
         </h1>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          Configure how attendance is rounded, how overtime and odd shifts are
-          counted, winter duty windows, and security. Only{" "}
+          Configure normal mode and overlays for winter, double off day, no
+          friday, and 8-hour shift. Only{" "}
           <strong>superadmin</strong> can save these values.
         </p>
       </div>
 
       <AdminCard
-        title="Application behaviour"
-        description="These values drive the public overtime calculator and Excel export logic. Change them with care; staff-facing results update immediately after save."
+        title="Overtime configuration"
+        description="These values drive overtime calculation, UI behavior, and export output."
       >
         <div className="space-y-6">
           <AdminSection
-            title="Winter duty window"
-            subtitle="When enabled, winter placeholder offsets from the calendar month apply between the start and end day numbers (inclusive)."
-          >
-            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900/50">
-              <input
-                type="checkbox"
-                className="mt-1 h-4 w-4 rounded border-slate-300 text-[#003594] focus:ring-[#003594]"
-                checked={settings.isWinter}
-                onChange={(e) =>
-                  setSettings({ ...settings, isWinter: e.target.checked })
-                }
-              />
-              <div>
-                <span className="font-semibold text-slate-900 dark:text-white">
-                  Enable winter mode
-                </span>
-                <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                  Turns on winter timing rules for the configured day range of
-                  each month.
-                </p>
-              </div>
-            </label>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <AdminField
-                label="Winter start day"
-                hint="First calendar day (1–31) when winter rules apply."
-              >
-                <input
-                  className="input-field"
-                  type="number"
-                  min={1}
-                  max={31}
-                  value={settings.winterStartDay ?? ""}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      winterStartDay: e.target.value
-                        ? Number(e.target.value)
-                        : null,
-                    })
-                  }
-                />
-              </AdminField>
-              <AdminField
-                label="Winter end day"
-                hint="Last calendar day when winter rules apply. Leave empty for no end cap."
-              >
-                <input
-                  className="input-field"
-                  type="number"
-                  min={1}
-                  max={31}
-                  value={settings.winterEndDay ?? ""}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      winterEndDay: e.target.value
-                        ? Number(e.target.value)
-                        : null,
-                    })
-                  }
-                />
-              </AdminField>
-            </div>
-          </AdminSection>
-
-          <AdminSection
-            title="Attendance rounding"
-            subtitle="Minutes: how close raw clock times can be to scheduled in/out before snapping to duty time. Used when processing extension or pasted attendance."
+            title="Normal mode"
+            subtitle="Base behavior when no overlays are active."
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <AdminField
-                label="In-time threshold"
-                hint="Maximum minutes away from duty start to still treat as on-time snap."
-              >
-                <input
-                  className="input-field"
-                  type="number"
-                  min={0}
-                  max={120}
-                  value={settings.inTimeThreshold}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      inTimeThreshold: Number(e.target.value),
-                    })
-                  }
-                />
-              </AdminField>
-              <AdminField
-                label="Out-time threshold"
-                hint="Maximum minutes away from duty end for snap behaviour on clock-out."
-              >
-                <input
-                  className="input-field"
-                  type="number"
-                  min={0}
-                  max={120}
-                  value={settings.outTimeThreshold}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      outTimeThreshold: Number(e.target.value),
-                    })
-                  }
-                />
-              </AdminField>
-            </div>
-          </AdminSection>
-
-          <AdminSection
-            title="Odd shifts & weekly off-days"
-            subtitle="Controls how “odd shift” counts are stored in reports, and the double off-day rule near month-end."
-          >
-            <div className="grid gap-4 sm:grid-cols-2">
-              <AdminField
-                label="Odd-shift minimum hours"
-                hint="Night or morning odd shift counts only if total relevant hours meet or exceed this value. Use 0 to count any odd shift flag."
+                label="Day-before-off reduction (hours)"
+                hint="Hours reduced from duty end on day before weekly off."
               >
                 <input
                   className="input-field"
                   type="number"
                   step={0.5}
                   min={0}
-                  value={settings.oddShiftMinHours}
+                  max={8}
+                  value={settings.normal.dayBeforeOffReductionHours}
                   onChange={(e) =>
                     setSettings({
                       ...settings,
-                      oddShiftMinHours: Number(e.target.value),
+                      normal: {
+                        ...settings.normal,
+                        dayBeforeOffReductionHours: Number(e.target.value),
+                      },
                     })
                   }
                 />
               </AdminField>
               <AdminField
-                label="Double off-day starts on day"
-                hint="From this day of the month onward, the weekly off-day and the following calendar day are both treated as off."
+                label="Enable Night Duty selection"
+                hint="Controls whether users choose night duty days."
               >
+                <label className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900/50">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-slate-300 text-[#003594] focus:ring-[#003594]"
+                    checked={settings.shifts.enableNightDuty}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        shifts: {
+                          ...settings.shifts,
+                          enableNightDuty: e.target.checked,
+                        },
+                      })
+                    }
+                  />
+                </label>
+              </AdminField>
+              <AdminField
+                label="Enable Morning Shift selection"
+                hint="Controls whether users choose morning shift days."
+              >
+                <label className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900/50">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-slate-300 text-[#003594] focus:ring-[#003594]"
+                    checked={settings.shifts.enableMorningShift}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        shifts: {
+                          ...settings.shifts,
+                          enableMorningShift: e.target.checked,
+                        },
+                      })
+                    }
+                  />
+                </label>
+              </AdminField>
+            </div>
+          </AdminSection>
+
+          <AdminSection
+            title="Cutoff thresholds"
+            subtitle="Rounding and odd-shift threshold configuration."
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <AdminField label="In-time threshold">
                 <input
                   className="input-field"
                   type="number"
-                  min={1}
-                  max={31}
-                  value={doubleOffdayStartDayInput}
-                  onChange={(e) => setDoubleOffdayStartDayInput(e.target.value)}
-                  onBlur={() => {
-                    const parsed = Number.parseInt(doubleOffdayStartDayInput, 10);
-                    const normalized = Number.isFinite(parsed)
-                      ? Math.min(31, Math.max(1, parsed))
-                      : defaultSettings.doubleOffdayStartDay;
+                  value={settings.cutoffThresholds.inTimeThreshold}
+                  onChange={(e) =>
                     setSettings({
                       ...settings,
-                      doubleOffdayStartDay: normalized,
-                    });
-                    setDoubleOffdayStartDayInput(String(normalized));
-                  }}
+                      cutoffThresholds: {
+                        ...settings.cutoffThresholds,
+                        inTimeThreshold: Number(e.target.value),
+                      },
+                    })
+                  }
                 />
               </AdminField>
-              <AdminField
-                label="Day-before-off duty reduction"
-                hint="Hours subtracted from scheduled end time on the day before a weekly off (only before the double off-day start day above)."
-              >
+              <AdminField label="Out-time threshold">
+                <input
+                  className="input-field"
+                  type="number"
+                  value={settings.cutoffThresholds.outTimeThreshold}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      cutoffThresholds: {
+                        ...settings.cutoffThresholds,
+                        outTimeThreshold: Number(e.target.value),
+                      },
+                    })
+                  }
+                />
+              </AdminField>
+              <AdminField label="Odd shift day minimum hours">
                 <input
                   className="input-field"
                   type="number"
                   step={0.5}
-                  min={0}
-                  max={12}
-                  value={settings.dayBeforeOffReductionHours}
+                  value={settings.cutoffThresholds.oddShiftDayMinHours}
                   onChange={(e) =>
                     setSettings({
                       ...settings,
-                      dayBeforeOffReductionHours: Number(e.target.value),
+                      cutoffThresholds: {
+                        ...settings.cutoffThresholds,
+                        oddShiftDayMinHours: Number(e.target.value),
+                      },
                     })
                   }
                 />
               </AdminField>
-              <AdminField
-                label="After-duty grace (IT template)"
-                hint="Minutes after scheduled end before export fills “late out” in the IT-style Excel layout."
-              >
+              <AdminField label="Odd shift night minimum hours">
                 <input
                   className="input-field"
                   type="number"
-                  min={0}
-                  max={180}
-                  value={settings.overtimeGraceMinutes}
+                  step={0.5}
+                  value={settings.cutoffThresholds.oddShiftNightMinHours}
                   onChange={(e) =>
                     setSettings({
                       ...settings,
-                      overtimeGraceMinutes: Number(e.target.value),
+                      cutoffThresholds: {
+                        ...settings.cutoffThresholds,
+                        oddShiftNightMinHours: Number(e.target.value),
+                      },
+                    })
+                  }
+                />
+              </AdminField>
+              <AdminField label="After duty grace (minutes)">
+                <input
+                  className="input-field"
+                  type="number"
+                  value={settings.cutoffThresholds.afterDutyGraceMinutes}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      cutoffThresholds: {
+                        ...settings.cutoffThresholds,
+                        afterDutyGraceMinutes: Number(e.target.value),
+                      },
                     })
                   }
                 />
@@ -346,74 +314,184 @@ export default function AdminSettingsPage() {
           </AdminSection>
 
           <AdminSection
-            title="Special early-morning window"
-            subtitle="Used when rounding raw in-times that fall between these clock times (e.g. night relief). All values are 24h HH:MM."
+            title="Special window"
+            subtitle="Window based time cutoffs."
           >
             <div className="grid gap-4 sm:grid-cols-2">
-              <AdminField
-                label="Window start"
-                hint="Earliest time that starts the special bucket."
-              >
+              <AdminField label="Window start">
                 <input
                   className="input-field font-mono"
                   placeholder="04:50"
-                  value={settings.specialWindowStart}
+                  value={settings.cutoffThresholds.specialWindowStart}
                   onChange={(e) =>
                     setSettings({
                       ...settings,
-                      specialWindowStart: e.target.value,
+                      cutoffThresholds: {
+                        ...settings.cutoffThresholds,
+                        specialWindowStart: e.target.value,
+                      },
                     })
                   }
                 />
               </AdminField>
-              <AdminField
-                label="Window end"
-                hint="Latest time still inside the special bucket."
-              >
+              <AdminField label="Window end">
                 <input
                   className="input-field font-mono"
                   placeholder="06:00"
-                  value={settings.specialWindowEnd}
+                  value={settings.cutoffThresholds.specialWindowEnd}
                   onChange={(e) =>
                     setSettings({
                       ...settings,
-                      specialWindowEnd: e.target.value,
+                      cutoffThresholds: {
+                        ...settings.cutoffThresholds,
+                        specialWindowEnd: e.target.value,
+                      },
                     })
                   }
                 />
               </AdminField>
-              <AdminField
-                label="Lower cutoff"
-                hint="Times at or below this snap one way; between lower and upper snap to middle."
-              >
+              <AdminField label="Lower cutoff">
                 <input
                   className="input-field font-mono"
                   placeholder="05:15"
-                  value={settings.specialWindowLowerCutoff}
+                  value={settings.cutoffThresholds.specialWindowLowerCutoff}
                   onChange={(e) =>
                     setSettings({
                       ...settings,
-                      specialWindowLowerCutoff: e.target.value,
+                      cutoffThresholds: {
+                        ...settings.cutoffThresholds,
+                        specialWindowLowerCutoff: e.target.value,
+                      },
                     })
                   }
                 />
               </AdminField>
-              <AdminField
-                label="Upper cutoff"
-                hint="Times at or above this snap to the end of the window."
-              >
+              <AdminField label="Upper cutoff">
                 <input
                   className="input-field font-mono"
                   placeholder="05:35"
-                  value={settings.specialWindowUpperCutoff}
+                  value={settings.cutoffThresholds.specialWindowUpperCutoff}
                   onChange={(e) =>
                     setSettings({
                       ...settings,
-                      specialWindowUpperCutoff: e.target.value,
+                      cutoffThresholds: {
+                        ...settings.cutoffThresholds,
+                        specialWindowUpperCutoff: e.target.value,
+                      },
                     })
                   }
                 />
               </AdminField>
+            </div>
+          </AdminSection>
+
+          {(
+            [
+              ["winterOverlay", "Winter overlay"],
+              ["doubleOffOverlay", "Double off overlay"],
+              ["noFridayOverlay", "No friday overlay"],
+              ["eightHourOverlay", "8-hour overlay"],
+            ] as const
+          ).map(([key, title]) => (
+            <AdminSection key={key} title={title} subtitle="Enable and define date range.">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <AdminField label="Enabled">
+                  <label className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900/50">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300 text-[#003594] focus:ring-[#003594]"
+                      checked={settings[key].enabled}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          [key]: { ...settings[key], enabled: e.target.checked },
+                        })
+                      }
+                    />
+                  </label>
+                </AdminField>
+                <AdminField label="Start day">
+                  <input
+                    className="input-field"
+                    type="number"
+                    min={1}
+                    max={31}
+                    value={settings[key].range.startDay}
+                    onChange={(e) =>
+                      setRange(key, "startDay", Number(e.target.value))
+                    }
+                  />
+                </AdminField>
+                <AdminField label="End day">
+                  <input
+                    className="input-field"
+                    type="number"
+                    min={1}
+                    max={31}
+                    value={settings[key].range.endDay}
+                    onChange={(e) => setRange(key, "endDay", Number(e.target.value))}
+                  />
+                </AdminField>
+              </div>
+            </AdminSection>
+          ))}
+
+          {(["normal", "winter"] as const).map((modeKey) => (
+            <AdminSection
+              key={modeKey}
+              title={`${modeKey[0].toUpperCase()}${modeKey.slice(1)} placeholders`}
+              subtitle="Duty placeholders per shift."
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                {(
+                  [
+                    ["regularIn", "Regular in"],
+                    ["regularOut", "Regular out"],
+                    ["nightIn", "Night in"],
+                    ["nightOut", "Night out"],
+                    ["morningIn", "Morning in"],
+                    ["morningOut", "Morning out"],
+                  ] as const
+                ).map(([field, label]) => (
+                  <AdminField key={field} label={label}>
+                    <input
+                      className="input-field"
+                      value={settings.placeholders[modeKey][field]}
+                      onChange={(e) =>
+                        setShiftPlaceholder("placeholders", modeKey, field, e.target.value)
+                      }
+                    />
+                  </AdminField>
+                ))}
+              </div>
+            </AdminSection>
+          ))}
+
+          <AdminSection
+            title="8-hour overlay defaults"
+            subtitle="Default duty values when 8-hour mode is active."
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              {(
+                [
+                  ["regularIn", "Regular in"],
+                  ["regularOut", "Regular out"],
+                  ["nightIn", "Night in"],
+                  ["nightOut", "Night out"],
+                  ["morningIn", "Morning in"],
+                  ["morningOut", "Morning out"],
+                ] as const
+              ).map(([field, label]) => (
+                <AdminField key={field} label={label}>
+                  <input
+                    className="input-field"
+                    value={settings.eightHourOverlay.defaults[field]}
+                    onChange={(e) =>
+                      setShiftPlaceholder("eightHourOverlay", "defaults", field, e.target.value)
+                    }
+                  />
+                </AdminField>
+              ))}
             </div>
           </AdminSection>
         </div>
